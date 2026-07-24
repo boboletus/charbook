@@ -453,6 +453,18 @@
       resize: none;
     }
 
+    .modal-input[type="text"] {
+      font-size: 1.125rem;
+      line-height: 1.5;
+      resize: none;
+    }
+
+    .priority-hint {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+
     .modal-actions {
       display: flex;
       gap: 0.5rem;
@@ -547,6 +559,11 @@
           <div class="modal-field">
             <label for="reviewCols">Number of columns</label>
             <input type="number" id="reviewCols" class="modal-input" min="1" max="8" value="3">
+          </div>
+          <div class="modal-field">
+            <label for="reviewPriority">High priority characters (applies to all pages)</label>
+            <input type="text" id="reviewPriority" class="modal-input" spellcheck="false" lang="zh-TW" placeholder="e.g. 小一不人了">
+            <p class="priority-hint">When all priority characters on a page are found, the rest auto-reveal.</p>
           </div>
         </div>
       </div>
@@ -806,6 +823,7 @@
         `${BOOK_DIR}/${PAGE_FILES[currentPage]}`;
       document.getElementById('reviewText').value = page.chars;
       document.getElementById('reviewCols').value = page.numCols;
+      document.getElementById('reviewPriority').value = GLOBAL_PRIORITY;
       document.getElementById('reviewModal').classList.add('active');
       setTimeout(() => document.getElementById('reviewText').focus(), 250);
     }
@@ -817,10 +835,17 @@
     function saveReview() {
       const text = document.getElementById('reviewText').value.replace(/\s/g, '');
       const cols = parseInt(document.getElementById('reviewCols').value) || DEFAULT_COLS;
+      const priority = document.getElementById('reviewPriority').value.replace(/\s/g, '');
       pages[currentPage] = {
         chars: text,
         numCols: Math.max(1, Math.min(8, cols)),
       };
+      GLOBAL_PRIORITY = priority;
+      if (MANIFEST_MODE) {
+        MANIFEST.priority = priority;
+      } else {
+        localStorage.setItem("book-chinese-priority", priority);
+      }
       savePages();
       closeReview();
       renderCards();
