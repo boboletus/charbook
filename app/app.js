@@ -157,7 +157,6 @@ function renderCards() {
     const isNewWord = newWordSet.has(p.char);
     const wrapper = document.createElement('div');
     wrapper.className = 'card-wrapper';
-    if (isNewWord) wrapper.classList.add('new-word');
     wrapper.style.left = (p.x * 100) + '%';
     wrapper.style.top = (p.y * 100) + '%';
     wrapper.style.width = (p.w * 100) + '%';
