@@ -218,7 +218,6 @@
     .card-wrapper {
       position: absolute;
       container-type: size;
-      perspective: 1000px;
       cursor: pointer;
     }
 
@@ -239,17 +238,14 @@
       color: var(--text);
       line-height: 1;
       letter-spacing: 0;
-      transform: rotateY(0deg);
       opacity: 1;
       transition:
-        transform 0.6s var(--flip-easing),
-        opacity 0.5s ease-out,
-        background 0.3s ease-out 0.3s,
-        box-shadow 0.3s ease-out 0.3s;
+        background 0.4s ease-out,
+        box-shadow 0.4s ease-out,
+        opacity 0.5s ease-out;
     }
 
     .card-wrapper.revealed .card-face {
-      transform: rotateY(360deg);
       background: transparent;
       box-shadow: none;
     }
@@ -407,13 +403,9 @@
     @media (prefers-reduced-motion: reduce) {
       .card-face {
         transition: opacity 0.2s ease;
-        transform: none !important;
       }
       .card-wrapper.faded .card-face {
         opacity: 0;
-      }
-      .card-wrapper:not(.revealed):active .card-face {
-        scale: none;
       }
       .card-wrapper {
         animation: none;
