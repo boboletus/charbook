@@ -378,7 +378,6 @@ function renderReviewCards() {
   reviewChars.forEach((char, i) => {
     const card = document.createElement('button');
     card.className = 'review-card';
-    if (newWordSet.has(char)) card.classList.add('new-word');
     card.textContent = char;
     card.style.animationDelay = (i * 60) + 'ms';
     card.setAttribute('aria-label', `Character ${char}`);
