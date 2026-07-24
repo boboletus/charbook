@@ -569,28 +569,13 @@
     </div>
   </div>
 
-  <script src="book.js"></script>
   <script>
-    const STORAGE_KEY = "book-chinese-pages";
     const DEFAULT_COLS = 3;
+    const BOOK_JSON = "assets/哪一个很奇怪/book.json";
+    const PUNCT = /[\s，。？！、；：""''「」（）·…—\-.,!?;:"'()]/g;
 
-    const FALLBACK_DIR = "assets/哪一个很奇怪";
-    const FALLBACK_PAGES = [
-      "page5.jpg","page6.jpg","page7.jpg","page8.jpg","page9.jpg",
-      "page10.jpg","page11.jpg","page12.jpg","page13.jpg","page14.jpg",
-      "page15.jpg","page16.jpg","page17.jpg","page18.jpg","page19.jpg",
-      "page20.jpg","page21.jpg","page22.jpg","page23.jpg","page24.jpg",
-      "page25.jpg","page26.jpg","page27.jpg","page28.jpg","page29.jpg",
-      "page30.jpg","page31.jpg","page32.jpg","page33.jpg","page34.jpg",
-      "page35.jpg","page36.jpg","page37.jpg","page38.jpg","page39.jpg",
-      "page40.jpg","page41.jpg","page42.jpg","page43.jpg","page44.jpg",
-      "page45.jpg","page46.jpg","page47.jpg","page48.jpg","page49.jpg",
-    ];
-
-    const MANIFEST = window.BOOK_DATA || null;
-    const MANIFEST_MODE = !!MANIFEST;
-    const BOOK_DIR = MANIFEST ? MANIFEST.base : FALLBACK_DIR;
-    const PAGE_FILES = MANIFEST ? MANIFEST.pages.map(p => `page${p.page}.jpg`) : FALLBACK_PAGES;
+    let BOOK_DIR = "";
+    let PAGE_FILES = [];
     let GLOBAL_PRIORITY = "";
     let pages = [];
     let currentPage = 0;
@@ -602,32 +587,20 @@
     let priorityTotal = 0;
     let autoRevealing = false;
 
-    function loadPages() {
-      if (MANIFEST_MODE) {
-        GLOBAL_PRIORITY = MANIFEST.priority || "";
-        pages = MANIFEST.pages.map(p => ({
-          chars: p.chars || "",
-          numCols: p.cols || DEFAULT_COLS,
-        }));
-        return;
-      }
-      GLOBAL_PRIORITY = localStorage.getItem("book-chinese-priority") || "";
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          pages = JSON.parse(saved);
-          if (Array.isArray(pages) && pages.length === PAGE_FILES.length) return;
-        } catch (e) {}
-      }
-      pages = PAGE_FILES.map(() => ({
-        chars: "",
-        numCols: DEFAULT_COLS,
-      }));
+    function cleanChars(s) {
+      return s.replace(PUNCT, '');
     }
 
-    function savePages() {
-      if (MANIFEST_MODE) return;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
+    async function loadBook() {
+      const resp = await fetch(BOOK_JSON);
+      const data = await resp.json();
+      BOOK_DIR = data.base;
+      GLOBAL_PRIORITY = data.priority || "";
+      PAGE_FILES = data.pages.map(p => `page${p.page}.jpg`);
+      pages = data.pages.map(p => ({
+        chars: cleanChars(p.chars || ""),
+        numCols: p.cols || DEFAULT_COLS,
+      }));
     }
 
     function distributeChars(chars, numCols) {
@@ -848,20 +821,14 @@
     }
 
     function saveEdit() {
-      const text = document.getElementById('editText').value.replace(/\s/g, '');
+      const text = cleanChars(document.getElementById('editText').value);
       const cols = parseInt(document.getElementById('editCols').value) || DEFAULT_COLS;
-      const priority = document.getElementById('editPriority').value.replace(/\s/g, '');
+      const priority = cleanChars(document.getElementById('editPriority').value);
       pages[currentPage] = {
         chars: text,
         numCols: Math.max(1, Math.min(8, cols)),
       };
       GLOBAL_PRIORITY = priority;
-      if (MANIFEST_MODE) {
-        MANIFEST.priority = priority;
-      } else {
-        localStorage.setItem("book-chinese-priority", priority);
-      }
-      savePages();
       closeEdit();
       renderCards();
     }
@@ -888,8 +855,7 @@
     });
 
     /* ---- Init ---- */
-    loadPages();
-    goToPage(0);
+    loadBook().then(() => goToPage(0));
   </script>
 </body>
 </html>
