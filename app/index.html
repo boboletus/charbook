@@ -572,7 +572,6 @@
   <script>
     const DEFAULT_COLS = 3;
     const BOOK_JSON = "assets/哪一个很奇怪/book.json";
-    const PUNCT = /[\s，。？！、；：""''「」（）·…—\-.,!?;:"'()]/g;
 
     let BOOK_DIR = "";
     let PAGE_FILES = [];
@@ -588,7 +587,7 @@
     let autoRevealing = false;
 
     function cleanChars(s) {
-      return s.replace(PUNCT, '');
+      return s.replace(/\s/g, '');
     }
 
     async function loadBook() {
