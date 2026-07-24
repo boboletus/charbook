@@ -4,6 +4,8 @@ let BOOK_DIR = "";
 let PAGE_FILES = [];
 let GLOBAL_PRIORITY = "";
 let GLOBAL_PRIORITY_TRAD = "";
+let GLOBAL_NEW_WORDS = "";
+let GLOBAL_NEW_WORDS_TRAD = "";
 let charVariant = "trad";
 let pages = [];
 let currentPage = 0;
@@ -21,11 +23,11 @@ let reviewedIndices = new Set();
 
 const dom = {};
 function initDomCache() {
-['cardsOverlay','emptyState','pageWrapper','bookPage','priorityText',
- 'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
- 'editPriority','editModal','reviewScreen','reviewGrid','reviewTitle',
- 'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
- 'editBtn','editCancel','editSave'].forEach(id => dom[id] = document.getElementById(id));
+ ['cardsOverlay','emptyState','pageWrapper','bookPage','priorityText',
+  'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
+  'editPriority','editNewWords','editModal','reviewScreen','reviewGrid','reviewTitle',
+  'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
+  'editBtn','editCancel','editSave'].forEach(id => dom[id] = document.getElementById(id));
 }
 
 function cleanChars(s) {
@@ -34,6 +36,10 @@ function cleanChars(s) {
 
 function getActivePriority() {
   return charVariant === 'trad' ? GLOBAL_PRIORITY_TRAD : GLOBAL_PRIORITY;
+}
+
+function getActiveNewWords() {
+  return charVariant === 'trad' ? GLOBAL_NEW_WORDS_TRAD : GLOBAL_NEW_WORDS;
 }
 
 function getActiveChars(page) {
@@ -58,6 +64,8 @@ async function loadBook() {
     BOOK_DIR = data.base;
     GLOBAL_PRIORITY = data.priority || "";
     GLOBAL_PRIORITY_TRAD = data.priority_trad || "";
+    GLOBAL_NEW_WORDS = data.new_words || "";
+    GLOBAL_NEW_WORDS_TRAD = data.new_words_trad || "";
     PAGE_FILES = data.pages.map(p => `page${p.page}.jpg`);
     pages = data.pages.map(p => ({
       chars: cleanChars(p.chars || ""),
@@ -135,6 +143,7 @@ function renderCards() {
   dom.pageWrapper.style.visibility = 'visible';
 
   const prioritySet = new Set(activePriority.split('').filter(c => activeChars.includes(c)));
+  const newWordSet = new Set(getActiveNewWords().split('').filter(c => activeChars.includes(c)));
   priorityTotal = [...prioritySet].reduce((acc, c) =>
     acc + activeChars.split('').filter(ch => ch === c).length, 0);
 
@@ -145,8 +154,10 @@ function renderCards() {
 
   positions.forEach((p, i) => {
     const isPriority = prioritySet.has(p.char);
+    const isNewWord = newWordSet.has(p.char);
     const wrapper = document.createElement('div');
     wrapper.className = 'card-wrapper';
+    if (isNewWord) wrapper.classList.add('new-word');
     wrapper.style.left = (p.x * 100) + '%';
     wrapper.style.top = (p.y * 100) + '%';
     wrapper.style.width = (p.w * 100) + '%';
@@ -158,7 +169,7 @@ function renderCards() {
     face.textContent = p.char;
     wrapper.appendChild(face);
 
-    const data = { wrapper, char: p.char, isPriority, index: i };
+    const data = { wrapper, char: p.char, isPriority, isNewWord, index: i };
     cardData.push(data);
 
     wrapper.addEventListener('pointerdown', (e) => {
@@ -174,11 +185,25 @@ function renderCards() {
   updateProgress();
 }
 
+const UNICORN_ANIMATIONS = ['unicornBounce', 'unicornSpin', 'unicornWiggle', 'unicornPop', 'unicornGallop'];
+const UNICORN_DURATION = 1100;
+
+function showUnicorn(data) {
+  const anim = UNICORN_ANIMATIONS[Math.floor(Math.random() * UNICORN_ANIMATIONS.length)];
+  const overlay = document.createElement('div');
+  overlay.className = 'unicorn-overlay';
+  overlay.textContent = '🦄';
+  overlay.style.animation = `${anim} ${UNICORN_DURATION}ms var(--ease) forwards`;
+  data.wrapper.appendChild(overlay);
+  setTimeout(() => overlay.remove(), UNICORN_DURATION);
+}
+
 function toggleCard(data) {
   const isRevealed = data.wrapper.classList.toggle('revealed');
   if (isRevealed) {
     revealedCount++;
     if (data.isPriority) priorityRevealed++;
+    if (data.isNewWord) showUnicorn(data);
     if (navigator.vibrate) navigator.vibrate(10);
   } else {
     revealedCount = Math.max(0, revealedCount - 1);
@@ -271,6 +296,7 @@ function resetAll() {
   cards.forEach(c => {
     c.classList.remove('revealed');
     c.classList.remove('faded');
+    c.querySelectorAll('.unicorn-overlay').forEach(u => u.remove());
   });
   revealedCount = 0;
   priorityRevealed = 0;
@@ -304,6 +330,8 @@ function openEdit() {
   dom.editText.lang = lang;
   dom.editPriority.value = activePriority;
   dom.editPriority.lang = lang;
+  dom.editNewWords.value = getActiveNewWords();
+  dom.editNewWords.lang = lang;
   dom.editModal.classList.add('active');
   setTimeout(() => dom.editText.focus(), 250);
 }
@@ -315,13 +343,16 @@ function closeEdit() {
 function saveEdit() {
   const text = cleanChars(dom.editText.value);
   const priority = cleanChars(dom.editPriority.value);
+  const newWords = cleanChars(dom.editNewWords.value);
   const page = pages[currentPage];
   if (charVariant === 'trad') {
     page.chars_trad = text;
     GLOBAL_PRIORITY_TRAD = priority;
+    GLOBAL_NEW_WORDS_TRAD = newWords;
   } else {
     page.chars = text;
     GLOBAL_PRIORITY = priority;
+    GLOBAL_NEW_WORDS = newWords;
   }
   closeEdit();
   renderCards();
@@ -334,15 +365,20 @@ function renderReviewCards() {
   reviewedIndices.clear();
 
   const priority = getActivePriority();
-  reviewChars = [...new Set(priority.split(''))];
+  const newWords = getActiveNewWords();
+  const priorityChars = [...new Set(priority.split(''))];
+  const newWordChars = [...new Set(newWords.split(''))].filter(c => !priorityChars.includes(c));
+  reviewChars = [...priorityChars, ...newWordChars];
 
   dom.reviewTitle.textContent =
     charVariant === 'trad' ? '識字預習' : '识字预习';
 
+  const newWordSet = new Set(newWordChars);
 
   reviewChars.forEach((char, i) => {
     const card = document.createElement('button');
     card.className = 'review-card';
+    if (newWordSet.has(char)) card.classList.add('new-word');
     card.textContent = char;
     card.style.animationDelay = (i * 60) + 'ms';
     card.setAttribute('aria-label', `Character ${char}`);
@@ -383,7 +419,7 @@ function updateReviewProgress() {
 }
 
 function showReview() {
-  if (!getActivePriority()) return;
+  if (!getActivePriority() && !getActiveNewWords()) return;
   reviewActive = true;
   renderReviewCards();
   dom.reviewScreen.classList.add('active');
@@ -444,6 +480,7 @@ document.addEventListener('keydown', (e) => {
 loadBook().then(() => {
   if (!PAGE_FILES.length) return;
   goToPage(0);
-  dom.reviewBtn.disabled = !getActivePriority();
-  if (getActivePriority()) showReview();
+  const hasReviewContent = getActivePriority() || getActiveNewWords();
+  dom.reviewBtn.disabled = !hasReviewContent;
+  if (hasReviewContent) showReview();
 });

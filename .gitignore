@@ -5,3 +5,4 @@ skills-lock.json
 extracted/
 __pycache__/
 *.pdf
+.claude/

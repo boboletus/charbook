@@ -44,6 +44,13 @@ def convert_dual(
     elif not data.get("priority_trad"):
         data["priority_trad"] = ""
 
+    # Book-level new words
+    simp_new_words = data.get("new_words", "")
+    if simp_new_words and (reset_trad or not data.get("new_words_trad")):
+        data["new_words_trad"] = cc.convert(simp_new_words)
+    elif not data.get("new_words_trad"):
+        data["new_words_trad"] = ""
+
     # Per-page chars
     converted = 0
     skipped = 0
