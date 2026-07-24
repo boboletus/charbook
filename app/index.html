@@ -222,30 +222,13 @@
       cursor: pointer;
     }
 
-    .card-flipper {
+    .card-face {
       width: 100%;
       height: 100%;
-      position: relative;
-      transform-style: preserve-3d;
-      transition: transform var(--flip-duration) var(--flip-easing);
-    }
-
-    .card-wrapper.flipped .card-flipper {
-      transform: rotateY(180deg);
-    }
-
-    .card-face {
-      position: absolute;
-      inset: 0;
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 3px;
-    }
-
-    .card-front {
       background: var(--card-bg-gradient);
       box-shadow:
         inset 0 0 0 1px var(--card-border),
@@ -256,29 +239,31 @@
       color: var(--text);
       line-height: 1;
       letter-spacing: 0;
+      transform: rotateY(0deg);
+      opacity: 1;
+      transition:
+        transform 0.6s var(--flip-easing),
+        opacity 0.15s ease-out 0.45s;
     }
 
-    .card-back {
-      transform: rotateY(180deg);
-      background: transparent;
-      border: 1px dashed oklch(0 0 0 / 0.06);
+    .card-wrapper.revealed .card-face {
+      transform: rotateY(360deg);
+      opacity: 0;
+      transition:
+        transform 0.6s var(--flip-easing),
+        opacity 0.2s ease-out;
     }
 
-    .card-wrapper:not(.flipped):hover .card-front {
+    .card-wrapper:not(.revealed):hover .card-face {
       background: linear-gradient(135deg, #fff 0%, #faf6ee 100%);
       box-shadow:
         inset 0 0 0 1px oklch(0 0 0 / 0.08),
         0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
-    .card-wrapper:not(.flipped):active .card-flipper {
+    .card-wrapper:not(.revealed):active .card-face {
       scale: 0.96;
       transition: scale 0.1s ease-out;
-    }
-
-    .card-wrapper.flipped:hover .card-back {
-      border-color: oklch(0 0 0 / 0.12);
-      background: oklch(0 0 0 / 0.02);
     }
 
     /* Entrance animation */
@@ -295,28 +280,6 @@
 
     .card-wrapper {
       animation: cardEnter 0.4s var(--flip-easing) backwards;
-    }
-
-    /* ---- Priority card indicator ---- */
-    .card-wrapper.priority .card-front::after {
-      content: "";
-      position: absolute;
-      top: 6cqh;
-      right: 6cqh;
-      width: 14cqh;
-      height: 14cqh;
-      background: var(--star);
-      clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-      opacity: 0.5;
-      transition: opacity 0.2s ease;
-    }
-
-    .card-wrapper.priority:not(.flipped):hover .card-front::after {
-      opacity: 0.8;
-    }
-
-    .card-wrapper.priority.flipped .card-front::after {
-      opacity: 0;
     }
 
     @keyframes priorityDone {
@@ -438,16 +401,14 @@
 
     /* ---- Reduced motion ---- */
     @media (prefers-reduced-motion: reduce) {
-      .card-flipper {
+      .card-face {
         transition: opacity 0.2s ease;
+        transform: none !important;
       }
-      .card-wrapper.flipped .card-flipper {
-        transform: none;
-      }
-      .card-wrapper.flipped .card-front {
+      .card-wrapper.revealed .card-face {
         opacity: 0;
       }
-      .card-wrapper:not(.flipped):active .card-flipper {
+      .card-wrapper:not(.revealed):active .card-face {
         scale: none;
       }
       .card-wrapper {
@@ -610,26 +571,17 @@
       positions.forEach((p, i) => {
         const isPriority = prioritySet.has(p.char);
         const wrapper = document.createElement('div');
-        wrapper.className = 'card-wrapper' + (isPriority ? ' priority' : '');
+        wrapper.className = 'card-wrapper';
         wrapper.style.left = (p.x * 100) + '%';
         wrapper.style.top = (p.y * 100) + '%';
         wrapper.style.width = (p.w * 100) + '%';
         wrapper.style.height = (p.h * 100) + '%';
         wrapper.style.animationDelay = (i * 25) + 'ms';
 
-        const flipper = document.createElement('div');
-        flipper.className = 'card-flipper';
-
-        const front = document.createElement('div');
-        front.className = 'card-face card-front';
-        front.textContent = p.char;
-
-        const back = document.createElement('div');
-        back.className = 'card-face card-back';
-
-        flipper.appendChild(front);
-        flipper.appendChild(back);
-        wrapper.appendChild(flipper);
+        const face = document.createElement('div');
+        face.className = 'card-face';
+        face.textContent = p.char;
+        wrapper.appendChild(face);
 
         const data = { wrapper, char: p.char, isPriority, index: i };
         cardData.push(data);
@@ -648,8 +600,8 @@
     }
 
     function toggleCard(data) {
-      const isFlipped = data.wrapper.classList.toggle('flipped');
-      if (isFlipped) {
+      const isRevealed = data.wrapper.classList.toggle('revealed');
+      if (isRevealed) {
         revealedCount++;
         if (data.isPriority) priorityRevealed++;
         if (navigator.vibrate) navigator.vibrate(10);
@@ -687,10 +639,10 @@
 
     function autoRevealAll() {
       autoRevealing = true;
-      const unrevealed = cardData.filter(d => !d.wrapper.classList.contains('flipped'));
+      const unrevealed = cardData.filter(d => !d.wrapper.classList.contains('revealed'));
       unrevealed.forEach((d, i) => {
         setTimeout(() => {
-          d.wrapper.classList.add('flipped');
+          d.wrapper.classList.add('revealed');
           revealedCount++;
           if (navigator.vibrate && i % 3 === 0) navigator.vibrate(8);
           updateProgress();
@@ -703,17 +655,17 @@
 
     function resetAll() {
       autoRevealing = false;
-      cards.forEach(c => c.classList.remove('flipped'));
+      cards.forEach(c => c.classList.remove('revealed'));
       revealedCount = 0;
       priorityRevealed = 0;
       updateProgress();
     }
 
     function revealAll() {
-      const unrevealed = cardData.filter(d => !d.wrapper.classList.contains('flipped'));
+      const unrevealed = cardData.filter(d => !d.wrapper.classList.contains('revealed'));
       unrevealed.forEach((d, i) => {
         setTimeout(() => {
-          d.wrapper.classList.add('flipped');
+          d.wrapper.classList.add('revealed');
           revealedCount++;
           if (d.isPriority) priorityRevealed++;
           if (navigator.vibrate && i % 3 === 0) navigator.vibrate(8);
