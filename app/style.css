@@ -379,6 +379,7 @@ body[data-variant="simp"] {
   align-items: center;
   justify-content: center;
   font-size: 65cqh;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", emoji;
   pointer-events: none;
   z-index: 2;
   line-height: 1;
@@ -386,54 +387,54 @@ body[data-variant="simp"] {
 }
 
 @keyframes unicornBounce {
-  0%   { opacity: 0; scale: 0.25; }
-  15%  { opacity: 1; scale: 1; }
-  25%  { translate: 0 -35%; }
-  35%  { translate: 0 0; }
-  45%  { translate: 0 -35%; }
-  55%  { translate: 0 0; }
-  70%  { opacity: 1; scale: 1; }
-  100% { opacity: 0; scale: 0.5; }
+  0%   { opacity: 0; transform: scale(0.25); }
+  15%  { opacity: 1; transform: scale(1); }
+  25%  { transform: translate(0, -35%) scale(1); }
+  35%  { transform: translate(0, 0) scale(1); }
+  45%  { transform: translate(0, -35%) scale(1); }
+  55%  { transform: translate(0, 0) scale(1); }
+  70%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.5); }
 }
 
 @keyframes unicornSpin {
-  0%   { opacity: 0; scale: 0.25; rotate: 0deg; }
-  15%  { opacity: 1; scale: 1; }
-  60%  { rotate: 360deg; scale: 1.15; }
-  70%  { opacity: 1; scale: 1; rotate: 360deg; }
-  100% { opacity: 0; scale: 0.5; rotate: 360deg; }
+  0%   { opacity: 0; transform: rotate(0deg) scale(0.25); }
+  15%  { opacity: 1; transform: rotate(0deg) scale(1); }
+  60%  { transform: rotate(360deg) scale(1.15); }
+  70%  { opacity: 1; transform: rotate(360deg) scale(1); }
+  100% { opacity: 0; transform: rotate(360deg) scale(0.5); }
 }
 
 @keyframes unicornWiggle {
-  0%   { opacity: 0; scale: 0.25; }
-  15%  { opacity: 1; scale: 1; }
-  25%  { rotate: -20deg; }
-  35%  { rotate: 20deg; }
-  45%  { rotate: -15deg; }
-  55%  { rotate: 15deg; }
-  65%  { rotate: -10deg; }
-  70%  { opacity: 1; scale: 1; rotate: 0deg; }
-  100% { opacity: 0; scale: 0.5; }
+  0%   { opacity: 0; transform: scale(0.25); }
+  15%  { opacity: 1; transform: scale(1); }
+  25%  { transform: rotate(-20deg) scale(1); }
+  35%  { transform: rotate(20deg) scale(1); }
+  45%  { transform: rotate(-15deg) scale(1); }
+  55%  { transform: rotate(15deg) scale(1); }
+  65%  { transform: rotate(-10deg) scale(1); }
+  70%  { opacity: 1; transform: rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: scale(0.5); }
 }
 
 @keyframes unicornPop {
-  0%   { opacity: 0; scale: 0.25; }
-  20%  { opacity: 1; scale: 1.35; }
-  35%  { scale: 0.9; }
-  50%  { scale: 1.15; }
-  65%  { scale: 0.95; }
-  70%  { opacity: 1; scale: 1; }
-  100% { opacity: 0; scale: 1.4; }
+  0%   { opacity: 0; transform: scale(0.25); }
+  20%  { opacity: 1; transform: scale(1.35); }
+  35%  { transform: scale(0.9); }
+  50%  { transform: scale(1.15); }
+  65%  { transform: scale(0.95); }
+  70%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.4); }
 }
 
 @keyframes unicornGallop {
-  0%   { opacity: 0; scale: 0.25; translate: -80% 0; }
-  15%  { opacity: 1; scale: 1; translate: 0 0; }
-  30%  { translate: 30% -15%; }
-  45%  { translate: 0 0; }
-  60%  { translate: -30% -15%; }
-  70%  { opacity: 1; scale: 1; translate: 0 0; }
-  100% { opacity: 0; scale: 0.5; translate: 80% 0; }
+  0%   { opacity: 0; transform: translate(-80%, 0) scale(0.25); }
+  15%  { opacity: 1; transform: translate(0, 0) scale(1); }
+  30%  { transform: translate(30%, -15%) scale(1); }
+  45%  { transform: translate(0, 0) scale(1); }
+  60%  { transform: translate(-30%, -15%) scale(1); }
+  70%  { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(80%, 0) scale(0.5); }
 }
 
 /* ---- Review screen ---- */
