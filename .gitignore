@@ -1,5 +1,7 @@
 .venv/
 .opencode/
+.agents/
+skills-lock.json
 extracted/
 __pycache__/
 *.pdf

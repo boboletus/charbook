@@ -2,3 +2,4 @@ fastcore
 opencc-python-reimplemented
 pillow
 pymupdf
+pytest
