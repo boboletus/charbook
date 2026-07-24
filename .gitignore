@@ -1,0 +1,5 @@
+.venv/
+.opencode/
+extracted/
+__pycache__/
+*.pdf

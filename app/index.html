@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>識字練習 — Character Recognition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f0ebe2;
+      --card-bg: #fefcf8;
+      --card-bg-gradient: linear-gradient(135deg, #fefcf8 0%, #f5f0e6 100%);
+      --card-border: oklch(0 0 0 / 0.06);
+      --text: oklch(0.22 0.02 50);
+      --text-secondary: oklch(0.50 0.02 50);
+      --accent: oklch(0.72 0.18 50);
+      --accent-hover: oklch(0.67 0.19 50);
+      --accent-soft: oklch(0.72 0.18 50 / 0.12);
+      --toolbar-bg: rgba(255, 252, 248, 0.72);
+      --toolbar-border: rgba(0, 0, 0, 0.06);
+      --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+      --shadow-toolbar: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
+      --shadow-image: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+      --flip-duration: 0.55s;
+      --flip-easing: cubic-bezier(0.2, 0, 0, 1);
+      --toolbar-h: 56px;
+      --star: oklch(0.72 0.18 70);
+      --star-soft: oklch(0.72 0.18 70 / 0.15);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* ---- Toolbar ---- */
+    .toolbar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1.25rem;
+      min-height: var(--toolbar-h);
+      background: var(--toolbar-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--toolbar-border);
+      box-shadow: var(--shadow-toolbar);
+    }
+
+    .toolbar-title {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+
+    .toolbar-progress {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      min-width: 0;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 6px;
+      background: oklch(0.9 0.01 50);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.5s var(--flip-easing);
+    }
+
+    @keyframes celebratePulse {
+      0% { transform: scale(1); }
+      40% { transform: scaleX(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    .progress-fill.complete {
+      animation: celebratePulse 0.6s ease-out;
+    }
+
+    .progress-text {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .star-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--star);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      transition: opacity 0.2s ease;
+    }
+
+    .star-icon {
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.5rem 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 0.625rem;
+      cursor: pointer;
+      transition: scale 0.12s ease-out, background 0.15s ease-out, border-color 0.15s ease-out;
+    }
+
+    .btn:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .btn:active {
+      scale: 0.96;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border-color: transparent;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    /* ---- Page area ---- */
+    .page-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      overflow: hidden;
+    }
+
+    .page-wrapper {
+      position: relative;
+      max-height: 100%;
+      max-width: 100%;
+    }
+
+    .book-page {
+      display: block;
+      max-width: 100%;
+      max-height: calc(100dvh - var(--toolbar-h) - 2rem);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 0.5rem;
+      outline: 1px solid oklch(0 0 0 / 0.1);
+      box-shadow: var(--shadow-image);
+    }
+
+    .cards-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+
+    /* ---- Card ---- */
+    .card-wrapper {
+      position: absolute;
+      container-type: size;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+
+    .card-flipper {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform var(--flip-duration) var(--flip-easing);
+    }
+
+    .card-wrapper.flipped .card-flipper {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+    }
+
+    .card-front {
+      background: var(--card-bg-gradient);
+      box-shadow:
+        inset 0 0 0 1px var(--card-border),
+        var(--shadow-card);
+      font-family: "Noto Serif TC", "PingFang TC", "Microsoft YaHei", serif;
+      font-weight: 700;
+      font-size: 60cqh;
+      color: var(--text);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .card-back {
+      transform: rotateY(180deg);
+      background: transparent;
+      border: 1px dashed oklch(0 0 0 / 0.06);
+    }
+
+    .card-wrapper:not(.flipped):hover .card-front {
+      background: linear-gradient(135deg, #fff 0%, #faf6ee 100%);
+      box-shadow:
+        inset 0 0 0 1px oklch(0 0 0 / 0.08),
+        0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-wrapper:not(.flipped):active .card-flipper {
+      scale: 0.96;
+      transition: scale 0.1s ease-out;
+    }
+
+    .card-wrapper.flipped:hover .card-back {
+      border-color: oklch(0 0 0 / 0.12);
+      background: oklch(0 0 0 / 0.02);
+    }
+
+    /* Entrance animation */
+    @keyframes cardEnter {
+      from {
+        opacity: 0;
+        transform: scale(0.85) translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .card-wrapper {
+      animation: cardEnter 0.4s var(--flip-easing) backwards;
+    }
+
+    /* ---- Priority card indicator ---- */
+    .card-wrapper.priority .card-front::after {
+      content: "";
+      position: absolute;
+      top: 6cqh;
+      right: 6cqh;
+      width: 14cqh;
+      height: 14cqh;
+      background: var(--star);
+      clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+      opacity: 0.5;
+      transition: opacity 0.2s ease;
+    }
+
+    .card-wrapper.priority:not(.flipped):hover .card-front::after {
+      opacity: 0.8;
+    }
+
+    .card-wrapper.priority.flipped .card-front::after {
+      opacity: 0;
+    }
+
+    @keyframes priorityDone {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+
+    .star-badge.complete {
+      animation: priorityDone 0.5s ease-out;
+    }
+
+    /* ---- Edit modal ---- */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      max-width: 460px;
+      width: calc(100% - 2rem);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      transform: scale(0.95);
+      transition: transform 0.25s var(--flip-easing);
+    }
+
+    .modal-overlay.active .modal {
+      transform: scale(1);
+    }
+
+    .modal h2 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .modal-field {
+      margin-bottom: 0.875rem;
+    }
+
+    .modal-field label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 0.375rem;
+    }
+
+    .modal textarea {
+      width: 100%;
+      min-height: 100px;
+      font-family: "Noto Serif TC", "PingFang TC", serif;
+      font-size: 1.25rem;
+      line-height: 1.8;
+      padding: 0.75rem;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 0.5rem;
+      resize: vertical;
+      letter-spacing: 0.05em;
+      color: var(--text);
+      background: #fafaf8;
+    }
+
+    .modal textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+      background: white;
+    }
+
+    .modal-field input[type="number"] {
+      width: 80px;
+      font-size: 1rem;
+      padding: 0.375rem 0.5rem;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 0.375rem;
+      color: var(--text);
+      background: #fafaf8;
+    }
+
+    .modal-field input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+      background: white;
+    }
+
+    .modal-field input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+      background: white;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 1.25rem;
+    }
+
+    /* ---- Reduced motion ---- */
+    @media (prefers-reduced-motion: reduce) {
+      .card-flipper {
+        transition: opacity 0.2s ease;
+      }
+      .card-wrapper.flipped .card-flipper {
+        transform: none;
+      }
+      .card-wrapper.flipped .card-front {
+        opacity: 0;
+      }
+      .card-wrapper:not(.flipped):active .card-flipper {
+        scale: none;
+      }
+      .card-wrapper {
+        animation: none;
+      }
+      .progress-fill {
+        transition: width 0.2s ease;
+      }
+      .star-badge.complete {
+        animation: none;
+      }
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 640px) {
+      .toolbar {
+        padding: 0.625rem 0.75rem;
+        gap: 0.5rem;
+      }
+      .toolbar-title {
+        display: none;
+      }
+      .btn {
+        padding: 0.4rem 0.625rem;
+        font-size: 0.75rem;
+      }
+      .progress-text {
+        font-size: 0.75rem;
+      }
+      .star-badge {
+        font-size: 0.75rem;
+      }
+      .star-icon {
+        width: 12px;
+        height: 12px;
+      }
+      .page-container {
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="toolbar">
+      <span class="toolbar-title">識字練習</span>
+      <div class="toolbar-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <span class="progress-text" id="progressText">0 / 23</span>
+        <span class="star-badge" id="starBadge" style="display:none;">
+          <svg class="star-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z" fill="currentColor"/>
+          </svg>
+          <span id="starText">0 / 0</span>
+        </span>
+      </div>
+      <div class="toolbar-actions">
+        <button class="btn" id="editBtn">Edit</button>
+        <button class="btn" id="resetBtn">Reset</button>
+        <button class="btn btn-primary" id="revealBtn">Reveal All</button>
+      </div>
+    </header>
+    <main class="page-container">
+      <div class="page-wrapper" id="pageWrapper">
+        <img src="assets/page1.jpg" alt="Book page" class="book-page" id="bookPage">
+        <div class="cards-overlay" id="cardsOverlay"></div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <h2>Edit Characters</h2>
+      <div class="modal-field">
+        <label>Characters (reading order: right-to-left, top-to-bottom)</label>
+        <textarea id="editText" spellcheck="false" lang="zh-TW"></textarea>
+      </div>
+      <div class="modal-field">
+        <label>Number of columns</label>
+        <input type="number" id="editCols" min="1" max="8" value="3">
+      </div>
+      <div class="modal-field">
+        <label>High priority characters (reveal all when these are found)</label>
+        <input type="text" id="editPriority" spellcheck="false" lang="zh-TW" style="width:100%;font-family:'Noto Serif TC','PingFang TC',serif;font-size:1.125rem;padding:0.5rem 0.75rem;border:1px solid rgba(0,0,0,0.15);border-radius:0.5rem;letter-spacing:0.05em;color:var(--text);background:#fafaf8;" placeholder="e.g. 小女天">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="editCancel">Cancel</button>
+        <button class="btn btn-primary" id="editSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const INITIAL_CHARS = "小女孩很喜歡小天總是給她換各種漂亮的衣服和飾品";
+    const INITIAL_COLS = 3;
+    const INITIAL_PRIORITY = "小女天衣";
+
+    let state = {
+      chars: INITIAL_CHARS,
+      numCols: INITIAL_COLS,
+      priority: INITIAL_PRIORITY,
+    };
+
+    let cards = [];
+    let cardData = [];
+    let revealedCount = 0;
+    let priorityRevealed = 0;
+    let priorityTotal = 0;
+    let autoRevealing = false;
+
+    function distributeChars(chars, numCols) {
+      const total = chars.length;
+      const baseCount = Math.floor(total / numCols);
+      const extra = total % numCols;
+      const columns = [];
+      let idx = 0;
+      for (let col = 0; col < numCols; col++) {
+        const count = baseCount + (col < extra ? 1 : 0);
+        columns.push(chars.slice(idx, idx + count).split(''));
+        idx += count;
+      }
+      return columns;
+    }
+
+    function computePositions(columns) {
+      const numCols = columns.length;
+      const maxRows = Math.max(...columns.map(c => c.length));
+      const colWidth = 1 / numCols;
+      const rowHeight = 1 / maxRows;
+      const positions = [];
+      for (let col = 0; col < numCols; col++) {
+        const x = (numCols - 1 - col) * colWidth;
+        for (let row = 0; row < columns[col].length; row++) {
+          const y = row * rowHeight;
+          positions.push({
+            char: columns[col][row],
+            x, y, w: colWidth, h: rowHeight,
+          });
+        }
+      }
+      return positions;
+    }
+
+    function renderCards() {
+      const overlay = document.getElementById('cardsOverlay');
+      overlay.innerHTML = '';
+      cards = [];
+      cardData = [];
+      revealedCount = 0;
+      priorityRevealed = 0;
+
+      const prioritySet = new Set(state.priority.split('').filter(c => state.chars.includes(c)));
+      priorityTotal = [...prioritySet].reduce((acc, c) => acc + state.chars.split('').filter(ch => ch === c).length, 0);
+
+      const columns = distributeChars(state.chars, state.numCols);
+      const positions = computePositions(columns);
+
+      positions.forEach((p, i) => {
+        const isPriority = prioritySet.has(p.char);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'card-wrapper' + (isPriority ? ' priority' : '');
+        wrapper.style.left = (p.x * 100) + '%';
+        wrapper.style.top = (p.y * 100) + '%';
+        wrapper.style.width = (p.w * 100) + '%';
+        wrapper.style.height = (p.h * 100) + '%';
+        wrapper.style.animationDelay = (i * 25) + 'ms';
+
+        const flipper = document.createElement('div');
+        flipper.className = 'card-flipper';
+
+        const front = document.createElement('div');
+        front.className = 'card-face card-front';
+        front.textContent = p.char;
+
+        const back = document.createElement('div');
+        back.className = 'card-face card-back';
+
+        flipper.appendChild(front);
+        flipper.appendChild(back);
+        wrapper.appendChild(flipper);
+
+        const data = { wrapper, char: p.char, isPriority, index: i };
+        cardData.push(data);
+
+        wrapper.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          if (autoRevealing) return;
+          toggleCard(data);
+        });
+
+        overlay.appendChild(wrapper);
+        cards.push(wrapper);
+      });
+
+      updateProgress();
+    }
+
+    function toggleCard(data) {
+      const isFlipped = data.wrapper.classList.toggle('flipped');
+      if (isFlipped) {
+        revealedCount++;
+        if (data.isPriority) priorityRevealed++;
+        if (navigator.vibrate) navigator.vibrate(10);
+      } else {
+        revealedCount = Math.max(0, revealedCount - 1);
+        if (data.isPriority) priorityRevealed = Math.max(0, priorityRevealed - 1);
+      }
+      updateProgress();
+      checkPriorityComplete();
+    }
+
+    function updateProgress() {
+      const total = cards.length;
+      const pct = total > 0 ? (revealedCount / total) * 100 : 0;
+      const fill = document.getElementById('progressFill');
+      fill.style.width = pct + '%';
+      document.getElementById('progressText').textContent = `${revealedCount} / ${total}`;
+      fill.classList.toggle('complete', revealedCount === total && total > 0);
+
+      const starBadge = document.getElementById('starBadge');
+      if (priorityTotal > 0) {
+        starBadge.style.display = '';
+        document.getElementById('starText').textContent = `${priorityRevealed} / ${priorityTotal}`;
+        starBadge.classList.toggle('complete', priorityRevealed === priorityTotal);
+      } else {
+        starBadge.style.display = 'none';
+      }
+    }
+
+    function checkPriorityComplete() {
+      if (priorityTotal > 0 && priorityRevealed === priorityTotal && revealedCount < cards.length && !autoRevealing) {
+        autoRevealAll();
+      }
+    }
+
+    function autoRevealAll() {
+      autoRevealing = true;
+      const unrevealed = cardData.filter(d => !d.wrapper.classList.contains('flipped'));
+      unrevealed.forEach((d, i) => {
+        setTimeout(() => {
+          d.wrapper.classList.add('flipped');
+          revealedCount++;
+          if (navigator.vibrate && i % 3 === 0) navigator.vibrate(8);
+          updateProgress();
+          if (i === unrevealed.length - 1) {
+            autoRevealing = false;
+          }
+        }, i * 60);
+      });
+    }
+
+    function resetAll() {
+      autoRevealing = false;
+      cards.forEach(c => c.classList.remove('flipped'));
+      revealedCount = 0;
+      priorityRevealed = 0;
+      updateProgress();
+    }
+
+    function revealAll() {
+      const unrevealed = cardData.filter(d => !d.wrapper.classList.contains('flipped'));
+      unrevealed.forEach((d, i) => {
+        setTimeout(() => {
+          d.wrapper.classList.add('flipped');
+          revealedCount++;
+          if (d.isPriority) priorityRevealed++;
+          if (navigator.vibrate && i % 3 === 0) navigator.vibrate(8);
+          updateProgress();
+        }, i * 35);
+      });
+    }
+
+    function openEdit() {
+      document.getElementById('editText').value = state.chars;
+      document.getElementById('editCols').value = state.numCols;
+      document.getElementById('editPriority').value = state.priority;
+      document.getElementById('editModal').classList.add('active');
+      setTimeout(() => document.getElementById('editText').focus(), 250);
+    }
+
+    function closeEdit() {
+      document.getElementById('editModal').classList.remove('active');
+    }
+
+    function saveEdit() {
+      const text = document.getElementById('editText').value.replace(/\s/g, '');
+      const cols = parseInt(document.getElementById('editCols').value) || 3;
+      const priority = document.getElementById('editPriority').value.replace(/\s/g, '');
+      if (!text) return;
+      state.chars = text;
+      state.numCols = Math.max(1, Math.min(8, cols));
+      state.priority = priority;
+      closeEdit();
+      renderCards();
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', resetAll);
+    document.getElementById('revealBtn').addEventListener('click', revealAll);
+    document.getElementById('editBtn').addEventListener('click', openEdit);
+    document.getElementById('editCancel').addEventListener('click', closeEdit);
+    document.getElementById('editSave').addEventListener('click', saveEdit);
+    document.getElementById('editModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeEdit();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeEdit();
+    });
+
+    renderCards();
+  </script>
+</body>
+</html>
