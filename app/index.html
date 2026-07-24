@@ -349,7 +349,7 @@
       background: oklch(0.99 0.004 80);
       border-radius: 1rem;
       padding: 1.5rem;
-      max-width: 520px;
+      max-width: 720px;
       width: calc(100% - 2rem);
       max-height: calc(100dvh - 2rem);
       overflow-y: auto;
@@ -362,6 +362,39 @@
 
     .modal-overlay.active .modal {
       scale: 1;
+    }
+
+    .review-layout {
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }
+
+    .review-image {
+      flex-shrink: 0;
+      width: 200px;
+      border-radius: 0.5rem;
+      outline: 1px solid oklch(0 0 0 / 0.1);
+      box-shadow: var(--shadow-image);
+    }
+
+    .review-form {
+      flex: 1;
+      min-width: 0;
+    }
+
+    @media (max-width: 640px) {
+      .review-layout {
+        flex-direction: column;
+        align-items: center;
+      }
+      .review-image {
+        width: 100%;
+        max-width: 280px;
+      }
+      .review-form {
+        width: 100%;
+      }
     }
 
     .modal h2 {
@@ -568,18 +601,23 @@
   <div class="modal-overlay" id="reviewModal">
     <div class="modal">
       <h2 id="reviewTitle">Review Page</h2>
-      <div class="modal-field">
-        <label for="reviewText">Characters (reading order: right-to-left, top-to-bottom)</label>
-        <textarea id="reviewText" class="modal-input" spellcheck="false" lang="zh-TW" rows="3" placeholder="Type the characters on this page…"></textarea>
-      </div>
-      <div class="modal-field">
-        <label for="reviewCols">Number of columns</label>
-        <input type="number" id="reviewCols" class="modal-input" min="1" max="8" value="3">
-      </div>
-      <div class="modal-field">
-        <label>High priority characters — tap to mark</label>
-        <div class="priority-picker" id="priorityPicker"></div>
-        <p class="priority-hint">Tap characters the child should recognize. When all are found, the page reveals.</p>
+      <div class="review-layout">
+        <img id="reviewImage" class="review-image" src="" alt="Page preview">
+        <div class="review-form">
+          <div class="modal-field">
+            <label for="reviewText">Characters (reading order: right-to-left, top-to-bottom)</label>
+            <textarea id="reviewText" class="modal-input" spellcheck="false" lang="zh-TW" rows="3" placeholder="Type the characters on this page…"></textarea>
+          </div>
+          <div class="modal-field">
+            <label for="reviewCols">Number of columns</label>
+            <input type="number" id="reviewCols" class="modal-input" min="1" max="8" value="3">
+          </div>
+          <div class="modal-field">
+            <label>High priority characters — tap to mark</label>
+            <div class="priority-picker" id="priorityPicker"></div>
+            <p class="priority-hint">Tap characters the child should recognize. When all are found, the page reveals.</p>
+          </div>
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn" id="reviewCancel">Cancel</button>
@@ -819,6 +857,8 @@
       const page = pages[currentPage];
       document.getElementById('reviewTitle').textContent =
         `Review Page ${currentPage + 1}`;
+      document.getElementById('reviewImage').src =
+        `${BOOK_DIR}/${PAGE_FILES[currentPage]}`;
       document.getElementById('reviewText').value = page.chars;
       document.getElementById('reviewCols').value = page.numCols;
       reviewPriority = new Set(page.priority.split('').filter(c => page.chars.includes(c)));
@@ -897,6 +937,7 @@
     document.addEventListener('keydown', (e) => {
       if (document.getElementById('reviewModal').classList.contains('active')) {
         if (e.key === 'Escape') closeReview();
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') saveReview();
         return;
       }
       if (e.key === 'ArrowLeft') prevPage();
