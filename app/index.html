@@ -583,6 +583,7 @@
         <span class="progress-text unset" id="priorityText">Not set up</span>
       </div>
       <div class="toolbar-actions">
+        <button class="btn" id="downloadBtn" title="Download book.json with current edits">Download</button>
         <button class="btn" id="resetBtn">Reset</button>
         <button class="btn btn-primary" id="reviewBtn">Review</button>
       </div>
@@ -593,7 +594,7 @@
         <div class="cards-overlay" id="cardsOverlay"></div>
       </div>
       <div class="empty-state" id="emptyState" hidden>
-        <p>This page hasn't been set up yet. Tap <strong>Review</strong> to type in the characters for this page.</p>
+        <p>This page hasn't been set up yet. Tap <strong>Review</strong> for this page, or edit <strong>book.json</strong> to fill in every page at once.</p>
       </div>
     </main>
   </div>
@@ -626,9 +627,13 @@
     </div>
   </div>
 
+  <script src="book.js"></script>
   <script>
-    const BOOK_DIR = "assets/哪一个很奇怪";
-    const PAGE_FILES = [
+    const STORAGE_KEY = "book-chinese-pages";
+    const DEFAULT_COLS = 3;
+
+    const FALLBACK_DIR = "assets/哪一个很奇怪";
+    const FALLBACK_PAGES = [
       "page5.jpg","page6.jpg","page7.jpg","page8.jpg","page9.jpg",
       "page10.jpg","page11.jpg","page12.jpg","page13.jpg","page14.jpg",
       "page15.jpg","page16.jpg","page17.jpg","page18.jpg","page19.jpg",
@@ -639,9 +644,11 @@
       "page40.jpg","page41.jpg","page42.jpg","page43.jpg","page44.jpg",
       "page45.jpg","page46.jpg","page47.jpg","page48.jpg","page49.jpg",
     ];
-    const STORAGE_KEY = "book-chinese-pages";
-    const DEFAULT_COLS = 3;
 
+    const MANIFEST = window.BOOK_DATA || null;
+    const MANIFEST_MODE = !!MANIFEST;
+    let BOOK_DIR = MANIFEST ? MANIFEST.base : FALLBACK_DIR;
+    let PAGE_FILES = MANIFEST ? MANIFEST.pages.map(p => `page${p.page}.jpg`) : FALLBACK_PAGES;
     let pages = [];
     let currentPage = 0;
 
@@ -655,6 +662,14 @@
     let reviewPriority = new Set();
 
     function loadPages() {
+      if (MANIFEST_MODE) {
+        pages = MANIFEST.pages.map(p => ({
+          chars: p.chars || "",
+          numCols: p.cols || DEFAULT_COLS,
+          priority: p.priority || "",
+        }));
+        return;
+      }
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
@@ -670,6 +685,7 @@
     }
 
     function savePages() {
+      if (MANIFEST_MODE) return;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
     }
 
@@ -918,6 +934,28 @@
       renderCards();
     }
 
+    function downloadBook() {
+      const data = {
+        book: MANIFEST ? MANIFEST.book : "export",
+        base: BOOK_DIR,
+        pages: pages.map((p, i) => ({
+          page: parseInt(PAGE_FILES[i].replace(/\D/g, '')),
+          chars: p.chars,
+          cols: p.numCols,
+          priority: p.priority,
+        })),
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'book.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
     /* ---- Event listeners ---- */
     document.getElementById('prevBtn').addEventListener('click', prevPage);
     document.getElementById('nextBtn').addEventListener('click', nextPage);
@@ -925,6 +963,7 @@
     document.getElementById('reviewBtn').addEventListener('click', openReview);
     document.getElementById('reviewCancel').addEventListener('click', closeReview);
     document.getElementById('reviewSave').addEventListener('click', saveReview);
+    document.getElementById('downloadBtn').addEventListener('click', downloadBook);
     document.getElementById('reviewModal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeReview();
     });
