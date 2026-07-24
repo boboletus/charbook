@@ -11,15 +11,16 @@ Workflow (busy parents, bulk text editing):
      -> app/assets/海底100层/book.json   (one entry per page; EDIT THIS)
      -> app/book.js                       (loaded by the app via <script>)
 
-  3. Bulk-edit book.json in any text editor — fill chars/cols/priority for
-     every page at once, no page-by-page modal needed.
+  3. Bulk-edit book.json in any text editor — fill chars/cols for every page
+     and set priority once at the book level (top-level "priority" field).
+     The app matches that global priority list against each page's characters.
 
   4. Recompile and refresh:
        .venv/bin/python scripts/gen_book.py 海底100层
      then reload the app. Existing edits are preserved; new pages are added
      with empty fields.
 
-Use --reset only to wipe all char fields back to empty (keeps the page list).
+Use --reset to wipe char fields back to empty (keeps the page list and priority).
 
 Examples:
     .venv/bin/python scripts/gen_book.py 海底100层
@@ -32,7 +33,7 @@ Options:
     --base       URL base for page images, relative to app/ (default: assets/<name>)
     --out        Output path for the compiled book.js (default: app/book.js)
     --cols       Default column count for new pages (default: 3)
-    --reset      Wipe all char/priority fields to empty (keeps the page list)
+    --reset      Wipe char fields to empty (keeps the page list and book-level priority)
 
 Run with --help to see the auto-generated usage from fastcore.
 """
@@ -53,7 +54,7 @@ def gen_book(
     base: str = None,  # URL base for page images, relative to app/ (default: assets/<name>)
     out: str = "app/book.js",  # Output path for the compiled book.js
     cols: int = 3,  # Default column count for new pages
-    reset: store_true = False,  # Wipe all char/priority fields to empty (keeps the page list)
+    reset: store_true = False,  # Wipe char fields to empty (keeps the page list and book-level priority)
 ):
     """Generate book.json from page images and compile to book.js for the app."""
 
@@ -77,13 +78,21 @@ def gen_book(
 
     manifest_path = pdir / "book.json"
     existing: dict[int, dict] = {}
-    if manifest_path.exists() and not reset:
+    old_priority = ""
+    if manifest_path.exists():
         try:
             old = json.loads(manifest_path.read_text(encoding="utf-8"))
-            for entry in old.get("pages", []):
-                existing[int(entry["page"])] = entry
+            old_priority = old.get("priority", "")
+            if not old_priority:
+                chars_set = set()
+                for entry in old.get("pages", []):
+                    chars_set.update(entry.get("priority", ""))
+                old_priority = "".join(sorted(chars_set))
+            if not reset:
+                for entry in old.get("pages", []):
+                    existing[int(entry["page"])] = entry
         except (OSError, ValueError, KeyError):
-            existing = {}
+            pass
 
     page_entries = []
     for p in pages:
@@ -94,17 +103,15 @@ def gen_book(
                 "page": n,
                 "chars": e.get("chars", ""),
                 "cols": e.get("cols", cols),
-                "priority": e.get("priority", ""),
             })
         else:
             page_entries.append({
                 "page": n,
                 "chars": "",
                 "cols": cols,
-                "priority": "",
             })
 
-    manifest = {"book": name, "base": url_base, "pages": page_entries}
+    manifest = {"book": name, "base": url_base, "priority": old_priority, "pages": page_entries}
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
@@ -119,4 +126,4 @@ def gen_book(
     filled = sum(1 for e in page_entries if e["chars"])
     mode = "reset" if reset else ("reconciled" if existing else "created")
     print(f"Book '{name}': {len(page_entries)} page(s) [{mode}] -> {manifest_path}")
-    print(f"  chars filled: {filled}/{len(page_entries)}   compiled -> {out_path}")
+    print(f"  chars filled: {filled}/{len(page_entries)}   priority: {old_priority or '(none)'}   compiled -> {out_path}")

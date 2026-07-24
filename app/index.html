@@ -449,70 +449,6 @@
       resize: none;
     }
 
-    /* ---- Priority picker ---- */
-    .priority-picker {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.375rem;
-      padding: 0.75rem;
-      background: oklch(0.97 0.006 80);
-      border-radius: 0.5rem;
-      box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.1);
-      min-height: 3rem;
-    }
-
-    .priority-picker:empty::after {
-      content: "Type characters above first";
-      color: oklch(0.6 0.01 60 / 0.5);
-      font-size: 0.8125rem;
-      font-style: italic;
-    }
-
-    .priority-chip {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.25rem;
-      height: 2.25rem;
-      font-family: "Noto Serif TC", "PingFang TC", serif;
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: var(--text);
-      background: oklch(0.99 0.004 80);
-      box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.1);
-      border: none;
-      border-radius: 0.375rem;
-      cursor: pointer;
-      transition-property: scale, background, box-shadow, color;
-      transition-duration: 0.15s;
-      transition-timing-function: ease-out;
-    }
-
-    .priority-chip:hover {
-      background: oklch(0 0 0 / 0.04);
-    }
-
-    .priority-chip:active {
-      scale: 0.92;
-    }
-
-    .priority-chip.selected {
-      background: var(--priority);
-      color: oklch(0.98 0.01 80);
-      box-shadow: none;
-    }
-
-    .priority-chip:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px var(--accent-soft);
-    }
-
-    .priority-hint {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 0.5rem;
-    }
-
     .modal-actions {
       display: flex;
       gap: 0.5rem;
@@ -563,11 +499,6 @@
       .page-container {
         padding: 0.5rem;
       }
-      .priority-chip {
-        width: 2rem;
-        height: 2rem;
-        font-size: 1rem;
-      }
     }
   </style>
 </head>
@@ -613,11 +544,6 @@
             <label for="reviewCols">Number of columns</label>
             <input type="number" id="reviewCols" class="modal-input" min="1" max="8" value="3">
           </div>
-          <div class="modal-field">
-            <label>High priority characters — tap to mark</label>
-            <div class="priority-picker" id="priorityPicker"></div>
-            <p class="priority-hint">Tap characters the child should recognize. When all are found, the page reveals.</p>
-          </div>
         </div>
       </div>
       <div class="modal-actions">
@@ -649,6 +575,7 @@
     const MANIFEST_MODE = !!MANIFEST;
     let BOOK_DIR = MANIFEST ? MANIFEST.base : FALLBACK_DIR;
     let PAGE_FILES = MANIFEST ? MANIFEST.pages.map(p => `page${p.page}.jpg`) : FALLBACK_PAGES;
+    let GLOBAL_PRIORITY = "";
     let pages = [];
     let currentPage = 0;
 
@@ -659,17 +586,16 @@
     let priorityTotal = 0;
     let autoRevealing = false;
 
-    let reviewPriority = new Set();
-
     function loadPages() {
       if (MANIFEST_MODE) {
+        GLOBAL_PRIORITY = MANIFEST.priority || "";
         pages = MANIFEST.pages.map(p => ({
           chars: p.chars || "",
           numCols: p.cols || DEFAULT_COLS,
-          priority: p.priority || "",
         }));
         return;
       }
+      GLOBAL_PRIORITY = localStorage.getItem("book-chinese-priority") || "";
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
@@ -680,7 +606,6 @@
       pages = PAGE_FILES.map(() => ({
         chars: "",
         numCols: DEFAULT_COLS,
-        priority: "",
       }));
     }
 
@@ -744,7 +669,7 @@
       document.getElementById('emptyState').hidden = true;
       document.getElementById('pageWrapper').style.visibility = 'visible';
 
-      const prioritySet = new Set(page.priority.split('').filter(c => page.chars.includes(c)));
+      const prioritySet = new Set(GLOBAL_PRIORITY.split('').filter(c => page.chars.includes(c)));
       priorityTotal = [...prioritySet].reduce((acc, c) =>
         acc + page.chars.split('').filter(ch => ch === c).length, 0);
 
@@ -877,8 +802,6 @@
         `${BOOK_DIR}/${PAGE_FILES[currentPage]}`;
       document.getElementById('reviewText').value = page.chars;
       document.getElementById('reviewCols').value = page.numCols;
-      reviewPriority = new Set(page.priority.split('').filter(c => page.chars.includes(c)));
-      renderPriorityPicker();
       document.getElementById('reviewModal').classList.add('active');
       setTimeout(() => document.getElementById('reviewText').focus(), 250);
     }
@@ -887,48 +810,13 @@
       document.getElementById('reviewModal').classList.remove('active');
     }
 
-    function renderPriorityPicker() {
-      const picker = document.getElementById('priorityPicker');
-      picker.innerHTML = '';
-      const chars = document.getElementById('reviewText').value.replace(/\s/g, '');
-      if (!chars) return;
-
-      const seen = new Set();
-      [...chars].forEach(ch => {
-        if (seen.has(ch)) return;
-        seen.add(ch);
-
-        const chip = document.createElement('button');
-        chip.className = 'priority-chip' + (reviewPriority.has(ch) ? ' selected' : '');
-        chip.textContent = ch;
-        chip.type = 'button';
-        chip.addEventListener('pointerdown', (e) => {
-          e.preventDefault();
-          if (reviewPriority.has(ch)) {
-            reviewPriority.delete(ch);
-            chip.classList.remove('selected');
-          } else {
-            reviewPriority.add(ch);
-            chip.classList.add('selected');
-          }
-        });
-        picker.appendChild(chip);
-      });
-    }
-
     function saveReview() {
       const text = document.getElementById('reviewText').value.replace(/\s/g, '');
       const cols = parseInt(document.getElementById('reviewCols').value) || DEFAULT_COLS;
-      if (!text) {
-        pages[currentPage] = { chars: "", numCols: cols, priority: "" };
-      } else {
-        const validPriority = [...reviewPriority].filter(c => text.includes(c)).join('');
-        pages[currentPage] = {
-          chars: text,
-          numCols: Math.max(1, Math.min(8, cols)),
-          priority: validPriority,
-        };
-      }
+      pages[currentPage] = {
+        chars: text,
+        numCols: Math.max(1, Math.min(8, cols)),
+      };
       savePages();
       closeReview();
       renderCards();
@@ -938,11 +826,11 @@
       const data = {
         book: MANIFEST ? MANIFEST.book : "export",
         base: BOOK_DIR,
+        priority: GLOBAL_PRIORITY,
         pages: pages.map((p, i) => ({
           page: parseInt(PAGE_FILES[i].replace(/\D/g, '')),
           chars: p.chars,
           cols: p.numCols,
-          priority: p.priority,
         })),
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -966,12 +854,6 @@
     document.getElementById('downloadBtn').addEventListener('click', downloadBook);
     document.getElementById('reviewModal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeReview();
-    });
-    document.getElementById('reviewText').addEventListener('input', () => {
-      const newChars = document.getElementById('reviewText').value.replace(/\s/g, '');
-      const valid = [...reviewPriority].filter(c => newChars.includes(c));
-      reviewPriority = new Set(valid);
-      renderPriorityPicker();
     });
     document.addEventListener('keydown', (e) => {
       if (document.getElementById('reviewModal').classList.contains('active')) {

@@ -1,276 +1,232 @@
 {
   "book": "哪一个很奇怪",
   "base": "assets/哪一个很奇怪",
+  "priority": "小女天衣",
   "pages": [
     {
       "page": 5,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 6,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 7,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 8,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 9,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 10,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 11,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 12,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 13,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 14,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 15,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 16,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 17,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 18,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 19,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 20,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 21,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 22,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 23,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 24,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 25,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 26,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 27,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 28,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 29,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 30,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 31,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 32,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 33,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 34,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 35,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 36,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 37,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 38,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 39,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 40,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 41,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 42,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 43,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 44,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 45,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 46,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 47,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 48,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     },
     {
       "page": 49,
       "chars": "",
-      "cols": 3,
-      "priority": ""
+      "cols": 3
     }
   ]
 }
