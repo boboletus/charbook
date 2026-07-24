@@ -428,15 +428,6 @@
       background: oklch(0.99 0.004 80);
     }
 
-    .modal-input[type="number"] {
-      width: 80px;
-      font-family: inherit;
-      font-size: 1rem;
-      line-height: 1.5;
-      letter-spacing: 0;
-      resize: none;
-    }
-
     .modal-input[type="text"] {
       font-size: 1.125rem;
       line-height: 1.5;
@@ -552,10 +543,6 @@
             <textarea id="editText" class="modal-input" spellcheck="false" lang="zh-TW" rows="3" placeholder="Type the characters on this page…"></textarea>
           </div>
           <div class="modal-field">
-            <label for="editCols">Number of columns</label>
-            <input type="number" id="editCols" class="modal-input" min="1" max="8" value="3">
-          </div>
-          <div class="modal-field">
             <label for="editPriority">High priority characters (applies to all pages)</label>
             <input type="text" id="editPriority" class="modal-input" spellcheck="false" lang="zh-TW" placeholder="e.g. 小一不人了">
             <p class="field-hint">When all priority characters on a page are found, the rest auto-reveal.</p>
@@ -570,7 +557,6 @@
   </div>
 
   <script>
-    const DEFAULT_COLS = 3;
     const BOOK_JSON = "assets/哪一个很奇怪/book.json";
 
     let BOOK_DIR = "";
@@ -590,6 +576,12 @@
       return s.replace(/\s/g, '');
     }
 
+    function computeCols(numChars, imgW, imgH) {
+      if (numChars <= 0 || imgW <= 0 || imgH <= 0) return 1;
+      const aspect = imgW / imgH;
+      return Math.max(1, Math.round(Math.sqrt(numChars * aspect)));
+    }
+
     async function loadBook() {
       const resp = await fetch(BOOK_JSON);
       const data = await resp.json();
@@ -598,7 +590,6 @@
       PAGE_FILES = data.pages.map(p => `page${p.page}.jpg`);
       pages = data.pages.map(p => ({
         chars: cleanChars(p.chars || ""),
-        numCols: p.cols || DEFAULT_COLS,
       }));
     }
 
@@ -661,7 +652,9 @@
       priorityTotal = [...prioritySet].reduce((acc, c) =>
         acc + page.chars.split('').filter(ch => ch === c).length, 0);
 
-      const columns = distributeChars(page.chars, page.numCols);
+      const img = document.getElementById('bookPage');
+      const numCols = computeCols(page.chars.length, img.naturalWidth, img.naturalHeight);
+      const columns = distributeChars(page.chars, numCols);
       const positions = computePositions(columns);
 
       positions.forEach((p, i) => {
@@ -794,8 +787,9 @@
       autoRevealing = false;
       currentPage = idx;
       const img = document.getElementById('bookPage');
+      img.onload = () => renderCards();
       img.src = `${BOOK_DIR}/${PAGE_FILES[idx]}`;
-      renderCards();
+      if (img.complete) renderCards();
     }
 
     function nextPage() { goToPage(currentPage + 1); }
@@ -809,7 +803,6 @@
       document.getElementById('editImage').src =
         `${BOOK_DIR}/${PAGE_FILES[currentPage]}`;
       document.getElementById('editText').value = page.chars;
-      document.getElementById('editCols').value = page.numCols;
       document.getElementById('editPriority').value = GLOBAL_PRIORITY;
       document.getElementById('editModal').classList.add('active');
       setTimeout(() => document.getElementById('editText').focus(), 250);
@@ -821,12 +814,8 @@
 
     function saveEdit() {
       const text = cleanChars(document.getElementById('editText').value);
-      const cols = parseInt(document.getElementById('editCols').value) || DEFAULT_COLS;
       const priority = cleanChars(document.getElementById('editPriority').value);
-      pages[currentPage] = {
-        chars: text,
-        numCols: Math.max(1, Math.min(8, cols)),
-      };
+      pages[currentPage] = { chars: text };
       GLOBAL_PRIORITY = priority;
       closeEdit();
       renderCards();
