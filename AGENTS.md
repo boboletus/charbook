@@ -22,6 +22,7 @@ Open http://localhost:8000. A server is required — the app uses `fetch()` to l
 - `app/assets/<book-name>/pageN.jpg` — page images extracted from PDF.
 - `scripts/extract_pdf.py` — render PDF pages to JPGs.
 - `scripts/gen_book.py` — generate/sync `book.json` from page images.
+- `scripts/convert_dual.py` — convert book.json to dual simplified+traditional format (adds `chars_trad`/`priority_trad` via OpenCC `s2tw`).
 
 ## book.json format
 
@@ -30,13 +31,15 @@ Open http://localhost:8000. A server is required — the app uses `fetch()` to l
   "book": "哪一个很奇怪",
   "base": "assets/哪一个很奇怪",
   "priority": "小一不人了",
+  "priority_trad": "小一不人了",
   "pages": [
-    { "page": 5, "chars": "哪一个很奇怪" }
+    { "page": 5, "chars": "哪一个很奇怪", "chars_trad": "哪一個很奇怪" }
   ]
 }
 ```
 
 - `priority` is book-level (applies to all pages), not per-page.
+- `priority_trad` and `chars_trad` are traditional Chinese variants, generated from the simplified fields via OpenCC (`s2tw`). The app defaults to traditional; a 繁/簡 toggle in the toolbar switches display.
 - `cols` is no longer in the schema — the app auto-calculates columns from image aspect ratio to make cards roughly square.
 - Punctuation in `chars` is kept and becomes cards like any other character.
 - Page numbers in the JSON correspond to `pageN.jpg` filenames (may not start at 1).
@@ -54,9 +57,13 @@ python scripts/extract_pdf.py --name 哪一个很奇怪 "book.pdf"
 # Generate or reconcile book.json from page images
 python scripts/gen_book.py 哪一个很奇怪
 # Use --reset to wipe chars back to empty (keeps page list + priority)
+
+# Convert book.json to dual simplified+traditional format
+python scripts/convert_dual.py 哪一个很奇怪
+# Use --reset-trad to re-convert all traditional fields from simplified
 ```
 
-Dependencies: `pymupdf`, `pillow`, `fastcore` (installed in `.venv`).
+Dependencies: `pymupdf`, `pillow`, `fastcore`, `opencc-python-reimplemented` (installed in `.venv`).
 
 ## Key design constraints
 
@@ -65,7 +72,7 @@ Dependencies: `pymupdf`, `pillow`, `fastcore` (installed in `.venv`).
 - "Reveal All" button works on any page (including pages with no priority chars).
 - Toolbar shows priority counter only (e.g. `1 / 5`), not total progress.
 - Edit modal shows the page image alongside the form so the parent can read while typing.
-- Arrow keys navigate pages when the modal is closed.
+- Arrow keys navigate pages when the modal is closed. `T` key toggles 繁/簡.
 
 ## Deployment
 

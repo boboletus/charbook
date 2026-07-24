@@ -72,10 +72,12 @@ def gen_book(
     manifest_path = pdir / "book.json"
     existing: dict[int, dict] = {}
     old_priority = ""
+    old_priority_trad = ""
     if manifest_path.exists():
         try:
             old = json.loads(manifest_path.read_text(encoding="utf-8"))
             old_priority = old.get("priority", "")
+            old_priority_trad = old.get("priority_trad", "")
             if not reset:
                 for entry in old.get("pages", []):
                     existing[int(entry["page"])] = entry
@@ -90,14 +92,16 @@ def gen_book(
             page_entries.append({
                 "page": n,
                 "chars": e.get("chars", ""),
+                "chars_trad": e.get("chars_trad", ""),
             })
         else:
             page_entries.append({
                 "page": n,
                 "chars": "",
+                "chars_trad": "",
             })
 
-    manifest = {"book": name, "base": url_base, "priority": old_priority, "pages": page_entries}
+    manifest = {"book": name, "base": url_base, "priority": old_priority, "priority_trad": old_priority_trad, "pages": page_entries}
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
