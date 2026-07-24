@@ -243,15 +243,15 @@
       opacity: 1;
       transition:
         transform 0.6s var(--flip-easing),
-        opacity 0.15s ease-out 0.45s;
+        opacity 0.5s ease-out;
     }
 
     .card-wrapper.revealed .card-face {
       transform: rotateY(360deg);
+    }
+
+    .card-wrapper.faded .card-face {
       opacity: 0;
-      transition:
-        transform 0.6s var(--flip-easing),
-        opacity 0.2s ease-out;
     }
 
     .card-wrapper:not(.revealed):hover .card-face {
@@ -405,7 +405,7 @@
         transition: opacity 0.2s ease;
         transform: none !important;
       }
-      .card-wrapper.revealed .card-face {
+      .card-wrapper.faded .card-face {
         opacity: 0;
       }
       .card-wrapper:not(.revealed):active .card-face {
@@ -640,22 +640,35 @@
     function autoRevealAll() {
       autoRevealing = true;
       const unrevealed = cardData.filter(d => !d.wrapper.classList.contains('revealed'));
+      const totalSteps = unrevealed.length;
       unrevealed.forEach((d, i) => {
         setTimeout(() => {
           d.wrapper.classList.add('revealed');
           revealedCount++;
           if (navigator.vibrate && i % 3 === 0) navigator.vibrate(8);
           updateProgress();
-          if (i === unrevealed.length - 1) {
+          if (i === totalSteps - 1) {
             autoRevealing = false;
+            fadeAllCards();
           }
         }, i * 60);
       });
     }
 
+    function fadeAllCards() {
+      cardData.forEach((d, i) => {
+        setTimeout(() => {
+          d.wrapper.classList.add('faded');
+        }, i * 40);
+      });
+    }
+
     function resetAll() {
       autoRevealing = false;
-      cards.forEach(c => c.classList.remove('revealed'));
+      cards.forEach(c => {
+        c.classList.remove('revealed');
+        c.classList.remove('faded');
+      });
       revealedCount = 0;
       priorityRevealed = 0;
       updateProgress();
