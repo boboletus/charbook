@@ -16,6 +16,7 @@ let revealedCount = 0;
 let priorityRevealed = 0;
 let priorityTotal = 0;
 let autoRevealing = false;
+let completedPages = new Set();
 
 let reviewActive = false;
 let reviewChars = [];
@@ -135,6 +136,18 @@ function renderCards() {
   if (!activeChars) {
     dom.emptyState.hidden = false;
     dom.pageWrapper.style.visibility = 'hidden';
+    updateProgress();
+    return;
+  }
+
+  if (completedPages.has(currentPage)) {
+    dom.emptyState.hidden = true;
+    dom.pageWrapper.style.visibility = 'visible';
+    dom.cardsOverlay.innerHTML = '';
+    cards = [];
+    cardData = [];
+    priorityRevealed = priorityTotal;
+    revealedCount = 0;
     updateProgress();
     return;
   }
@@ -283,15 +296,18 @@ function revealAll() {
 }
 
 function fadeAllCards() {
+  const total = cardData.length;
   cardData.forEach((d, i) => {
     setTimeout(() => {
       d.wrapper.classList.add('faded');
+      if (i === total - 1) completedPages.add(currentPage);
     }, i * 40);
   });
 }
 
 function resetAll() {
   autoRevealing = false;
+  completedPages.delete(currentPage);
   cards.forEach(c => {
     c.classList.remove('revealed');
     c.classList.remove('faded');
