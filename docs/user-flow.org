@@ -1,0 +1,19 @@
+#+last_modified: 2026-07-25 13:39:03
+
+* Review Screen
+
+The review screen shows priority and new-word characters as flashcards. The child taps each card to review before reading.
+
+* Book Screen
+
+The parent reads the page. The child taps cards they recognize. Each tapped card fades its background to reveal the illustration.
+
+Tapping a priority card counts down the priority counter in the toolbar.
+
+Tapping a new-word card shows a unicorn animation. The card then fades like any other.
+
+The child finds all priority cards on the page. The rest auto-reveal. All cards fade out to show the full picture.
+
+The child returns to a completed page. The illustration shows directly. No cards appear. Reset brings the cards back.
+
+"Reveal All" skips the priority requirement. It reveals every card on any page.
