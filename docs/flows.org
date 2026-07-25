@@ -1,0 +1,98 @@
+#+last_modified: 2026-07-25 13:50:12
+
+* User flow
+:PROPERTIES:
+:ID:       0f6daf9a-3d94-419f-ad4f-e08a1e40b0f5
+:END:
+
+** Review Screen
+
+The review screen shows priority and new-word characters as flashcards. The child taps each card to review before reading.
+
+** Book Screen
+
+
+The parent reads the page. The child taps cards they recognize. Each tapped card fades its background to reveal the illustration.
+
+Tapping a priority card counts down the priority counter in the toolbar.
+
+Tapping a new-word card shows a unicorn animation. The card then fades like any other.
+
+The child finds all priority cards on the page. The rest auto-reveal. All cards fade out to show the full picture.
+
+The child returns to a completed page. The illustration shows directly. No cards appear. Reset brings the cards back.
+
+"Reveal All" skips the priority requirement. It reveals every card on any page.
+
+* Development flow
+
+** Design
+
+Load design skills before writing code. Use ~better-ui~ for layout and animations. Use ~better-typography~ for text and spacing. Use ~apple-design~ for gestures and motion. Use ~better-accessibility~ for keyboard and ARIA.
+
+Read ~app/style.css~ and ~app/app.js~ first. Match the project conventions: plain CSS, OKLCH colors, ~var(--ease)~ for timing, ~scale(0.96)~ for press, concentric border radius, no ~transition: all~.
+
+** Document
+
+If code change is related to a [[:PROPERTIES:
+:ID:       0f6daf9a-3d94-419f-ad4f-e08a1e40b0f5
+:END:][user flow]], write down a new or modify an existing user flow. 
+
+** Develop & Check loop
+
+Write the code. Put HTML in ~index.html~. Put styles in ~style.css~. Put logic in ~app.js~. No build step. No npm. No framework.
+
+Update Python scripts in ~scripts/~ if the feature touches data. Update ~book.json~ fields if the schema changes.
+
+Logically check if code respect the [[0f6daf9a-3d94-419f-ad4f-e08a1e40b0f5][user flow]], Iterate when necessary. 
+
+** Test (unit)
+
+Run the tests:
+
+#+begin_src bash
+source .venv/bin/activate
+pytest tests/ -v
+#+end_src
+
+All tests must pass. Add new tests for any new Python script behavior. Fix the code if a test fails. Do not skip or weaken tests.
+
+** Integration test (UI)
+
+Start the local server:
+
+#+begin_src bash
+python3 -m http.server 8000 --directory app &
+#+end_src
+
+Check the DOM with headless Chromium:
+
+#+begin_src bash
+chromium --headless --no-sandbox --disable-gpu --dump-dom http://localhost:8000/ | grep -oE 'card-wrapper|review-card|book-page|unicorn'
+#+end_src
+
+Verify no JS console errors. A silent page with no cards means a script crash. Check that all expected elements render. Check that new feature elements appear and verify it works as described in user flow. 
+
+Kill the server after testing:
+
+#+begin_src bash
+fuser -k 8000/tcp
+#+end_src
+
+** Code review
+
+Load the ~code-review-analysis~ skill. Audit the changes for code quality, security, performance, and best practices.
+
+Check for duplicated patterns. Check for XSS: use ~textContent~ not ~innerHTML~ for user data. Check for unnecessary DOM lookups. Check for silent catch blocks. Check that ~will-change~ only targets compositor-friendly properties.
+
+Fix any issues before committing. Look for regressions from earlier steps. A common one: referencing ~dom.*~ before ~initDomCache()~ runs.
+
+** Commit
+
+Write a clear commit message. Describe what changed and why.
+
+Work on a branch if the user requests it. Squash-merge to ~main~ after all steps pass.
+
+** Feedback
+
+Tell the user what you did. Tell them what you verified. Mention any issues or trade-offs. Keep it short.
