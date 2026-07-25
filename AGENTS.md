@@ -84,6 +84,71 @@ Dependencies: `pymupdf`, `pillow`, `fastcore`, `opencc-python-reimplemented`, `p
 - Arrow keys navigate pages when the modal is closed. `T` key toggles 繁/簡.
 - Priority review screen: on first load, if priority characters exist, a full-screen review overlay shows each unique priority character as a large flashcard. Tapping a card pops it and marks it reviewed (accent ring). When all are reviewed, the "Start Reading" button becomes primary. The "Review" toolbar button re-opens it at any time. `Escape` exits review.
 
+## Development workflow
+
+For every user request that involves code changes, follow this workflow in order. Do not skip steps.
+
+### 1. Design (if there's a visual/UI element)
+
+Load the relevant design skills before writing any code:
+- `better-ui` for layout, surfaces, animations, polish details.
+- `better-typography` for text, fonts, spacing, wrapping.
+- `apple-design` for gesture-driven UI, springs, materials, motion principles.
+- `better-accessibility` for keyboard, ARIA, focus, reduced-motion.
+
+Study existing CSS/JS conventions in `app/style.css` and `app/app.js` before adding new ones. Match the project's styling system (plain CSS, OKLCH colors, `var(--ease)` for timing, `scale(0.96)` for press, concentric border radius, no `transition: all`).
+
+### 2. Develop
+
+Make the code changes. Follow the architecture: HTML structure in `index.html`, styles in `style.css`, logic in `app.js`. No build step, no npm, no framework. Update Python scripts (`scripts/`) and `book.json` data model if the feature touches data.
+
+### 3. Test (unit)
+
+```bash
+source .venv/bin/activate
+pytest tests/ -v
+```
+
+All tests must pass. Add new tests in `tests/` for any new Python script behavior. If a test fails, fix the code — do not skip or weaken the test.
+
+### 4. Integration test (UI)
+
+Launch the local server and verify the app renders and features work:
+
+```bash
+python3 -m http.server 8000 --directory app &
+```
+
+Use headless Chromium to verify the DOM renders correctly:
+
+```bash
+chromium --headless --no-sandbox --disable-gpu --dump-dom http://localhost:8000/ | grep -oE 'card-wrapper|review-card|book-page|unicorn'
+```
+
+Check for:
+- No JS console errors (a silent page with no cards means a script crash).
+- All expected DOM elements present (cards, review screen, toolbar buttons).
+- New feature elements render (e.g. `unicorn-overlay` after tap, `editNewWords` in modal).
+- Kill the server after testing: `fuser -k 8000/tcp`.
+
+### 5. Code review (refactoring)
+
+Use the `code-review-analysis` skill (in `.agents/skills/code-review-analysis/`) to audit changes for:
+- Code quality: readability, complexity, duplicated patterns.
+- Security: XSS (use `textContent` not `innerHTML` for user data), error handling.
+- Performance: unnecessary DOM lookups, repeated patterns that should be helpers.
+- Best practices: no silent catch blocks, no `transition: all`, `will-change` only on compositor-friendly properties.
+
+Fix any issues found before committing. If a previous step introduced a regression (e.g. referencing `dom.*` before `initDomCache()`), fix it here.
+
+### 6. Commit
+
+Commit with a clear message describing what changed and why. If working on a branch per the user's request, squash-merge to `main` after all steps pass.
+
+### 7. Feedback
+
+Report to the user: what was done, what was verified, and any issues or trade-offs. Keep it concise.
+
 ## Deployment
 
 GitHub Actions deploys `app/` to GitHub Pages on push to `main` (`.github/workflows/pages.yml`). No build step needed — the `app/` directory is uploaded as-is.
