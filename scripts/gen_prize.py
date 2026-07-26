@@ -5,10 +5,6 @@ A static site cannot list a directory, so this scans app/assets/Prize/*.svg and
 writes app/assets/Prize/prize.json. The app fetches it at runtime and picks a
 random unicorn on each new-word tap.
 
-Attribution lives separately in attribution.json (an array of attribution
-objects, each with a ``file`` field). Any SVG absent from that file does not
-require attribution.
-
 Example:
     .venv/bin/python scripts/gen_prize.py
 

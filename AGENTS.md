@@ -22,7 +22,7 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
 - `app/style.css` — all CSS (layout, cards, animations, responsive, reduced-motion).
 - `app/assets/<book-name>/book.json` — master data: page list, characters, priority, new words. Fetched at runtime. Single source of truth; the app does not use `localStorage`.
 - `app/assets/<book-name>/pageN.jpg` — page images extracted from PDF.
-- `app/assets/Prize/` — shared reward assets, **not a book**. Holds the unicorn SVG collection (every `*.svg` is a candidate, picked at random on each new-word tap), `prize.json` (the generated manifest of those SVGs, loaded by `loadPrizeSvgs()` via the `PRIZE_DIR` constant), and `attribution.json` (an array of attribution objects keyed by `file`; loaded by `loadAttribution()`, renders credit lines at the bottom of the page. Any SVG absent from this file does not require attribution).
+- `app/assets/Prize/` — shared reward assets, **not a book**. Holds the unicorn SVG collection (every `*.svg` is a candidate, picked at random on each new-word tap) and `prize.json` (the generated manifest of those SVGs, loaded by `loadPrizeSvgs()` via the `PRIZE_DIR` constant). Icons come from OpenSVG, which permits commercial and personal use with no attribution requirement.
 - `app/assets/fluency.txt` — newline-delimited list of characters the child already knows; `recommend_words.py` excludes these from recommendations.
 - `scripts/extract_pdf.py` — render PDF pages to JPGs.
 - `scripts/gen_book.py` — generate/sync `book.json` from page images.
@@ -178,4 +178,4 @@ GitHub Actions deploys `app/` to GitHub Pages on push to `main` (`.github/workfl
 - `.opencode/`, `.agents/`, `.claude/`, `skills-lock.json`, and `*.pdf` are gitignored. `book.js` was removed — do not recreate it; use `book.json` fetched at runtime.
 - `book.json` lives inside the book's asset directory (`app/assets/<name>/book.json`), not at the app root.
 - The active book is hardcoded in `app/app.js` line 1 (`BOOK_JSON`). There is no runtime book selector — switching books is a code edit, not a user action.
-- `app/assets/Prize/` contains shared reward assets: the unicorn SVG collection (all `*.svg` are used, picked randomly), the generated `prize.json` manifest, and `attribution.json` (an array; only listed files need attribution). Run `scripts/gen_prize.py` after adding or removing SVGs.
+- `app/assets/Prize/` contains shared reward assets: the unicorn SVG collection (all `*.svg` are used, picked randomly) and the generated `prize.json` manifest. Run `scripts/gen_prize.py` after adding or removing SVGs.

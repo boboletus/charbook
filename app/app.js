@@ -30,7 +30,7 @@ function initDomCache() {
    'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
    'editPriority','editNewWords','editModal','reviewScreen','reviewGrid','reviewTitle',
    'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
-   'editBtn','editCancel','editSave','creditLine','pageReminder'].forEach(id => dom[id] = document.getElementById(id));
+   'editBtn','editCancel','editSave','pageReminder'].forEach(id => dom[id] = document.getElementById(id));
 }
 
 function cleanChars(s) {
@@ -283,36 +283,6 @@ async function loadPrizeSvgs() {
     if (failed) console.warn(`Prize: ${failed} SVG(s) failed to load`);
   } catch (e) {
     console.warn('Failed to load prize manifest:', e.message);
-  }
-}
-
-function appendAttribution(entry) {
-  if (!entry.icon_name || !entry.artist || !entry.source) return;
-  const link = document.createElement('a');
-  if (entry.source_url) {
-    link.href = entry.source_url;
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.title = entry.icon_name + ' Icons';
-  }
-  link.textContent = entry.source;
-  if (dom.creditLine.childNodes.length) dom.creditLine.append(' · ');
-  dom.creditLine.append(
-    `${entry.icon_name} by ${entry.artist} from `,
-    link,
-    entry.license ? ` (${entry.license})` : ''
-  );
-}
-
-async function loadAttribution() {
-  try {
-    const resp = await fetch(`${PRIZE_DIR}/attribution.json`);
-    if (!resp.ok) return;
-    const data = await resp.json();
-    const entries = Array.isArray(data) ? data : [data];
-    entries.forEach(appendAttribution);
-  } catch (e) {
-    console.warn('Failed to load attribution:', e.message);
   }
 }
 
@@ -641,7 +611,6 @@ document.addEventListener('keydown', (e) => {
 
 /* ---- Init ---- */
 loadPrizeSvgs();
-loadAttribution();
 loadBook().then(() => {
   if (!PAGE_FILES.length) return;
   goToPage(0);

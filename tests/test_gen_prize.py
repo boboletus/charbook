@@ -27,7 +27,7 @@ def test_empty_when_no_svgs(tmp_path):
 def test_excludes_non_svg(tmp_path):
     (tmp_path / "unicorn.svg").write_text("<svg/>")
     (tmp_path / "prize.json").write_text("{}")
-    (tmp_path / "attribution.json").write_text("{}")
+    (tmp_path / "notes.txt").write_text("not an svg")
     data = run_gen_prize(tmp_path)
     assert data["svgs"] == ["unicorn.svg"]
 
