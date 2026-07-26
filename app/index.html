@@ -6,7 +6,7 @@
   <title>識字練習 — Character Recognition</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Serif+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-variant="trad">
@@ -32,9 +32,12 @@
       </div>
     </header>
     <main class="page-container">
-      <div class="page-wrapper" id="pageWrapper">
-        <img src="" alt="Book page" class="book-page" id="bookPage">
-        <div class="cards-overlay" id="cardsOverlay"></div>
+      <div class="reading-layout" id="readingLayout">
+        <div class="page-wrapper" id="pageWrapper">
+          <img src="" alt="Book page" class="book-page" id="bookPage">
+          <div class="cards-overlay" id="cardsOverlay"></div>
+        </div>
+        <aside class="page-reminder" id="pageReminder" hidden></aside>
       </div>
       <div class="empty-state" id="emptyState" hidden>
         <p>This page hasn't been set up yet. Tap <strong>Edit</strong> to add characters for this page.</p>

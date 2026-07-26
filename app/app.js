@@ -27,10 +27,10 @@ let reviewedIndices = new Set();
 const dom = {};
 function initDomCache() {
  ['cardsOverlay','emptyState','pageWrapper','bookPage','priorityText',
-  'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
-  'editPriority','editNewWords','editModal','reviewScreen','reviewGrid','reviewTitle',
-  'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
-  'editBtn','editCancel','editSave','creditLine'].forEach(id => dom[id] = document.getElementById(id));
+   'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
+   'editPriority','editNewWords','editModal','reviewScreen','reviewGrid','reviewTitle',
+   'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
+   'editBtn','editCancel','editSave','creditLine','pageReminder'].forEach(id => dom[id] = document.getElementById(id));
 }
 
 function cleanChars(s) {
@@ -130,6 +130,7 @@ function renderCards() {
   cardData = [];
   revealedCount = 0;
   priorityRevealed = 0;
+  renderReminder();
 
   const page = pages[currentPage];
   const activeChars = getActiveChars(page);
@@ -199,6 +200,46 @@ function renderCards() {
   updateProgress();
 }
 
+function renderReminder() {
+  const page = pages[currentPage];
+  if (!page) { dom.pageReminder.hidden = true; return; }
+  const activeChars = getActiveChars(page);
+  if (!activeChars) { dom.pageReminder.hidden = true; return; }
+
+  const charSet = new Set(activeChars.split(''));
+  const priorityOnPage = [...new Set(getActivePriority().split('').filter(c => charSet.has(c)))];
+  const newWordsOnPage = [...new Set(getActiveNewWords().split('').filter(c => charSet.has(c) && !priorityOnPage.includes(c)))];
+
+  if (!priorityOnPage.length && !newWordsOnPage.length) {
+    dom.pageReminder.hidden = true;
+    return;
+  }
+
+  dom.pageReminder.hidden = false;
+  dom.pageReminder.replaceChildren();
+
+  if (priorityOnPage.length) {
+    dom.pageReminder.appendChild(buildReminderGroup(
+      charVariant === 'trad' ? '複習' : '复习', priorityOnPage.join('')));
+  }
+  if (newWordsOnPage.length) {
+    dom.pageReminder.appendChild(buildReminderGroup('新字', newWordsOnPage.join('')));
+  }
+}
+
+function buildReminderGroup(label, chars) {
+  const group = document.createElement('div');
+  group.className = 'reminder-group';
+  const labelEl = document.createElement('span');
+  labelEl.className = 'reminder-label';
+  labelEl.textContent = label;
+  const charsEl = document.createElement('span');
+  charsEl.className = 'reminder-chars';
+  charsEl.textContent = chars;
+  group.append(labelEl, charsEl);
+  return group;
+}
+
 const UNICORN_ANIMATIONS = ['unicornBounce', 'unicornSpin', 'unicornWiggle', 'unicornPop', 'unicornGallop'];
 const UNICORN_DURATION = 1100;
 const PRIZE_COLORS = [
@@ -217,6 +258,7 @@ function parsePrizeSvg(text) {
   const svg = doc.querySelector('svg');
   if (!svg) return null;
   svg.querySelectorAll('text').forEach(t => t.remove());
+  svg.style.removeProperty('color');
   svg.setAttribute('fill', 'currentColor');
   return svg;
 }

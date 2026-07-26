@@ -22,6 +22,7 @@
   --shadow-modal: 0 20px 60px oklch(0 0 0 / 0.2);
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --toolbar-h: 56px;
+  --reminder-w: 4.5rem;
 }
 
 html, body {
@@ -282,6 +283,63 @@ body[data-variant="simp"] {
   inset: 0;
   border-radius: 0.5rem;
   overflow: hidden;
+}
+
+/* ---- Reading layout (page + reminder sidebar) ---- */
+.reading-layout {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  max-height: 100%;
+  max-width: 100%;
+}
+
+/* ---- Page reminder sidebar ---- */
+.page-reminder {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  justify-content: center;
+  width: var(--reminder-w);
+  flex-shrink: 0;
+  animation: reminderEnter 0.3s var(--ease) backwards;
+}
+
+.page-reminder[hidden] {
+  display: none;
+}
+
+.reminder-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reminder-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: var(--font-cn);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+}
+
+.reminder-chars {
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: var(--text);
+  font-family: var(--font-cn);
+  letter-spacing: 0.15em;
+  line-height: 1.8;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+@keyframes reminderEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .empty-state {
@@ -783,6 +841,9 @@ body[data-variant="simp"] {
     animation: none !important;
     opacity: 0;
   }
+  .page-reminder {
+    animation: none;
+  }
 }
 
 /* ---- Responsive ---- */
@@ -814,6 +875,20 @@ body[data-variant="simp"] {
   }
   .page-container {
     padding: 0.5rem;
+  }
+  .reading-layout {
+    gap: 0.5rem;
+  }
+  .page-reminder {
+    width: 3rem;
+    gap: 1rem;
+  }
+  .reminder-label {
+    font-size: 0.6875rem;
+  }
+  .reminder-chars {
+    font-size: 0.9375rem;
+    letter-spacing: 0.12em;
   }
   .edit-layout {
     flex-direction: column;

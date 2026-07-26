@@ -29,7 +29,7 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
 - `scripts/convert_dual.py` — convert book.json to dual simplified+traditional format (adds `chars_trad`/`priority_trad`/`new_words_trad` via OpenCC `s2tw`).
 - `scripts/recommend_words.py` — recommend high-frequency characters to add to priority list (reads `scripts/freq_table.csv` and `app/assets/fluency.txt`).
 - `scripts/gen_prize.py` — generate `app/assets/Prize/prize.json` manifest listing every unicorn `*.svg` so the static app can pick one at random.
-- `docs/flow.org` — human-facing org-mode notes: the user flow and this development workflow. Update the user flow there when a feature changes user-facing behavior.
+- `docs/flows.org` — human-facing org-mode notes: the user flow and this development workflow. Update the user flow there when a feature changes user-facing behavior.
 - `tests/` — pytest smoke tests for `gen_book.py`, `gen_prize.py`, `convert_dual.py`, and `recommend_words.py`.
 
 ## book.json format

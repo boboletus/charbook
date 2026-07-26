@@ -11,6 +11,7 @@ The review screen splits characters into two labeled groups: 複習 (review) for
 
 ** Book Screen
 
+To the right of each page image, a narrow sidebar shows the current page's 複習 (priority) and 新字 (new word) characters in regular reading font, set vertically. Only characters present on the current page are listed. Each group shows only when it has characters on the page. The sidebar updates when navigating pages or toggling 繁/簡.
 
 The parent reads the page. The child taps cards they recognize. Each tapped card fades its background to reveal the illustration.
 
