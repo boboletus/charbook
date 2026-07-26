@@ -7,7 +7,7 @@
 
 ** Review Screen
 
-The review screen shows priority and new-word characters as flashcards. The child taps each card to review before reading.
+The review screen splits characters into two labeled groups: 複習 (review) for priority characters the child already knows, and 新字 (new words) for the book's new-word characters. Each group is a labeled section with its own grid of flashcards. The child taps each card to review before reading.
 
 ** Book Screen
 
