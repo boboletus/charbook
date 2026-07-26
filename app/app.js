@@ -469,24 +469,49 @@ function renderReviewCards() {
   dom.reviewTitle.textContent =
     charVariant === 'trad' ? '識字預習' : '识字预习';
 
-  const newWordSet = new Set(newWordChars);
+  let idx = 0;
+  if (priorityChars.length) {
+    grid.appendChild(buildReviewSection(
+      charVariant === 'trad' ? '複習' : '复习', priorityChars, idx));
+    idx += priorityChars.length;
+  }
+  if (newWordChars.length) {
+    grid.appendChild(buildReviewSection('新字', newWordChars, idx));
+  }
 
-  reviewChars.forEach((char, i) => {
+  updateReviewProgress();
+}
+
+function buildReviewSection(label, chars, startIdx) {
+  const section = document.createElement('section');
+  section.className = 'review-section';
+
+  const heading = document.createElement('h2');
+  heading.className = 'review-section-label';
+  heading.textContent = label;
+  section.appendChild(heading);
+
+  const cardGrid = document.createElement('div');
+  cardGrid.className = 'review-card-grid';
+
+  chars.forEach((char, i) => {
+    const idx = startIdx + i;
     const card = document.createElement('button');
     card.className = 'review-card';
     card.textContent = char;
-    card.style.animationDelay = (i * 60) + 'ms';
+    card.style.animationDelay = (idx * 60) + 'ms';
     card.setAttribute('aria-label', `Character ${char}`);
 
     card.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      reviewCardTap(card, i);
+      reviewCardTap(card, idx);
     });
 
-    grid.appendChild(card);
+    cardGrid.appendChild(card);
   });
 
-  updateReviewProgress();
+  section.appendChild(cardGrid);
+  return section;
 }
 
 function reviewCardTap(card, idx) {

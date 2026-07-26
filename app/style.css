@@ -523,10 +523,33 @@ body[data-variant="simp"] {
 
 .review-grid {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  max-width: 480px;
+  width: 100%;
+}
+
+.review-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.review-section-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: var(--font-cn);
+  letter-spacing: 0.08em;
+}
+
+.review-card-grid {
+  display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.75rem;
-  max-width: 480px;
 }
 
 .review-card {
@@ -816,6 +839,9 @@ body[data-variant="simp"] {
     font-size: 0.8125rem;
   }
   .review-grid {
+    gap: 1.25rem;
+  }
+  .review-card-grid {
     gap: 0.5rem;
   }
   .review-screen {
