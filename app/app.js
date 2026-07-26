@@ -2,7 +2,7 @@ const BOOK_JSON = "assets/独角兽妹妹/book.json";
 const PRIZE_DIR = "assets/Prize";
 
 let BOOK_DIR = "";
-let unicornSvgEl = null;
+let prizeSvgs = [];
 let PAGE_FILES = [];
 let GLOBAL_PRIORITY = "";
 let GLOBAL_PRIORITY_TRAD = "";
@@ -201,21 +201,65 @@ function renderCards() {
 
 const UNICORN_ANIMATIONS = ['unicornBounce', 'unicornSpin', 'unicornWiggle', 'unicornPop', 'unicornGallop'];
 const UNICORN_DURATION = 1100;
+const PRIZE_COLORS = [
+  'oklch(0.75 0.22 15)',
+  'oklch(0.78 0.19 55)',
+  'oklch(0.82 0.20 95)',
+  'oklch(0.78 0.20 145)',
+  'oklch(0.80 0.16 195)',
+  'oklch(0.70 0.20 255)',
+  'oklch(0.68 0.22 300)',
+  'oklch(0.75 0.23 345)',
+];
 
-async function loadUnicornIcon() {
+function parsePrizeSvg(text) {
+  const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+  const svg = doc.querySelector('svg');
+  if (!svg) return null;
+  svg.querySelectorAll('text').forEach(t => t.remove());
+  svg.setAttribute('fill', 'currentColor');
+  return svg;
+}
+
+async function loadPrizeSvgs() {
   try {
-    const resp = await fetch(`${PRIZE_DIR}/noun-unicorn-8080367.svg`);
+    const resp = await fetch(`${PRIZE_DIR}/prize.json`);
     if (!resp.ok) return;
-    const text = await resp.text();
-    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-    const svg = doc.querySelector('svg');
-    if (!svg) return;
-    svg.querySelectorAll('text').forEach(t => t.remove());
-    svg.setAttribute('fill', 'currentColor');
-    unicornSvgEl = svg;
+    const data = await resp.json();
+    const files = Array.isArray(data.svgs) ? data.svgs : [];
+    const settled = await Promise.allSettled(files.map(f =>
+      fetch(`${PRIZE_DIR}/${encodeURIComponent(f)}`).then(r => {
+        if (!r.ok) throw new Error(`${f}: HTTP ${r.status}`);
+        return r.text();
+      })
+    ));
+    prizeSvgs = settled
+      .filter(s => s.status === 'fulfilled')
+      .map(s => parsePrizeSvg(s.value))
+      .filter(Boolean);
+    const failed = settled.filter(s => s.status === 'rejected').length;
+    if (failed) console.warn(`Prize: ${failed} SVG(s) failed to load`);
   } catch (e) {
-    console.warn('Failed to load unicorn icon:', e.message);
+    console.warn('Failed to load prize manifest:', e.message);
   }
+}
+
+function appendAttribution(entry) {
+  if (!entry.icon_name || !entry.artist || !entry.source) return;
+  const link = document.createElement('a');
+  if (entry.source_url) {
+    link.href = entry.source_url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.title = entry.icon_name + ' Icons';
+  }
+  link.textContent = entry.source;
+  if (dom.creditLine.childNodes.length) dom.creditLine.append(' · ');
+  dom.creditLine.append(
+    `${entry.icon_name} by ${entry.artist} from `,
+    link,
+    entry.license ? ` (${entry.license})` : ''
+  );
 }
 
 async function loadAttribution() {
@@ -223,20 +267,8 @@ async function loadAttribution() {
     const resp = await fetch(`${PRIZE_DIR}/attribution.json`);
     if (!resp.ok) return;
     const data = await resp.json();
-    if (!data.icon_name || !data.artist || !data.source) return;
-    const link = document.createElement('a');
-    if (data.source_url) {
-      link.href = data.source_url;
-      link.target = '_blank';
-      link.rel = 'noopener';
-      link.title = data.icon_name + ' Icons';
-    }
-    link.textContent = data.source;
-    dom.creditLine.append(
-      `${data.icon_name} by ${data.artist} from `,
-      link,
-      data.license ? ` (${data.license})` : ''
-    );
+    const entries = Array.isArray(data) ? data : [data];
+    entries.forEach(appendAttribution);
   } catch (e) {
     console.warn('Failed to load attribution:', e.message);
   }
@@ -244,10 +276,13 @@ async function loadAttribution() {
 
 function showUnicorn(data) {
   const anim = UNICORN_ANIMATIONS[Math.floor(Math.random() * UNICORN_ANIMATIONS.length)];
+  const color = PRIZE_COLORS[Math.floor(Math.random() * PRIZE_COLORS.length)];
   const overlay = document.createElement('div');
   overlay.className = 'unicorn-overlay';
-  if (unicornSvgEl) {
-    overlay.appendChild(document.importNode(unicornSvgEl, true));
+  overlay.style.color = color;
+  if (prizeSvgs.length) {
+    const tmpl = prizeSvgs[Math.floor(Math.random() * prizeSvgs.length)];
+    overlay.appendChild(document.importNode(tmpl, true));
   } else {
     overlay.textContent = '🦄';
   }
@@ -538,7 +573,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---- Init ---- */
-loadUnicornIcon();
+loadPrizeSvgs();
 loadAttribution();
 loadBook().then(() => {
   if (!PAGE_FILES.length) return;

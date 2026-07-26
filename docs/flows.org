@@ -1,4 +1,4 @@
-#+last_modified: 2026-07-25 13:50:12
+#+last_modified: 2026-07-25 23:02:50
 
 * User flow
 :PROPERTIES:
@@ -16,7 +16,7 @@ The parent reads the page. The child taps cards they recognize. Each tapped card
 
 Tapping a priority card counts down the priority counter in the toolbar.
 
-Tapping a new-word card shows a unicorn animation. The card then fades like any other.
+Tapping a new-word card pops a random unicorn from the Prize collection, colored in a random bright theme. The card then fades like any other.
 
 The child finds all priority cards on the page. The rest auto-reveal. All cards fade out to show the full picture.
 

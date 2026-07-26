@@ -22,14 +22,15 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
 - `app/style.css` — all CSS (layout, cards, animations, responsive, reduced-motion).
 - `app/assets/<book-name>/book.json` — master data: page list, characters, priority, new words. Fetched at runtime. Single source of truth; the app does not use `localStorage`.
 - `app/assets/<book-name>/pageN.jpg` — page images extracted from PDF.
-- `app/assets/Prize/` — shared reward assets, **not a book**. Holds `noun-unicorn-8080367.svg` (loaded by `loadUnicornIcon()` via the `PRIZE_DIR` constant) and `attribution.json` (loaded by `loadAttribution()`, renders a credit line at the bottom of the page).
+- `app/assets/Prize/` — shared reward assets, **not a book**. Holds the unicorn SVG collection (every `*.svg` is a candidate, picked at random on each new-word tap), `prize.json` (the generated manifest of those SVGs, loaded by `loadPrizeSvgs()` via the `PRIZE_DIR` constant), and `attribution.json` (an array of attribution objects keyed by `file`; loaded by `loadAttribution()`, renders credit lines at the bottom of the page. Any SVG absent from this file does not require attribution).
 - `app/assets/fluency.txt` — newline-delimited list of characters the child already knows; `recommend_words.py` excludes these from recommendations.
 - `scripts/extract_pdf.py` — render PDF pages to JPGs.
 - `scripts/gen_book.py` — generate/sync `book.json` from page images.
 - `scripts/convert_dual.py` — convert book.json to dual simplified+traditional format (adds `chars_trad`/`priority_trad`/`new_words_trad` via OpenCC `s2tw`).
 - `scripts/recommend_words.py` — recommend high-frequency characters to add to priority list (reads `scripts/freq_table.csv` and `app/assets/fluency.txt`).
+- `scripts/gen_prize.py` — generate `app/assets/Prize/prize.json` manifest listing every unicorn `*.svg` so the static app can pick one at random.
 - `docs/flow.org` — human-facing org-mode notes: the user flow and this development workflow. Update the user flow there when a feature changes user-facing behavior.
-- `tests/` — pytest smoke tests for `gen_book.py`, `convert_dual.py`, and `recommend_words.py`.
+- `tests/` — pytest smoke tests for `gen_book.py`, `gen_prize.py`, `convert_dual.py`, and `recommend_words.py`.
 
 ## book.json format
 
@@ -95,7 +96,7 @@ Dependencies: `pymupdf`, `pillow`, `fastcore`, `opencc-python-reimplemented`, `p
 - Edit modal shows the page image alongside the form so the parent can read while typing.
 - Keyboard: arrow keys navigate pages when the modal is closed; `T` toggles 繁/簡; `R` reveals all; `Ctrl/Cmd+Enter` saves the edit modal; `Escape` closes the modal or exits review.
 - Priority review screen: on first load, if priority characters exist, a full-screen review overlay shows each unique priority character as a large flashcard. Tapping a card pops it and marks it reviewed (accent ring). When all are reviewed, the "Start Reading" button becomes primary. The "Review" toolbar button re-opens it at any time.
-- New word cards trigger a unicorn icon (SVG from `assets/Prize/`) with one of 5 random CSS animations on tap. No visual hint before tap. Reduced-motion skips the animation. Falls back to 🦄 emoji if the SVG fails to load.
+- New word cards trigger a unicorn icon (a random SVG from `assets/Prize/` via `prize.json`) in a random bright OKLCH color theme, with one of 5 random CSS animations on tap. Monochrome (`currentColor`) SVGs adopt the theme color; multi-color SVGs keep their colors with a themed glow. No visual hint before tap. Reduced-motion skips the animation. Falls back to 🦄 emoji if every SVG fails to load.
 - CSS uses `transform` shorthand (not individual `scale`/`translate`/`rotate` properties) for Firefox Android compatibility.
 
 ## Development workflow
@@ -177,4 +178,4 @@ GitHub Actions deploys `app/` to GitHub Pages on push to `main` (`.github/workfl
 - `.opencode/`, `.agents/`, `.claude/`, `skills-lock.json`, and `*.pdf` are gitignored. `book.js` was removed — do not recreate it; use `book.json` fetched at runtime.
 - `book.json` lives inside the book's asset directory (`app/assets/<name>/book.json`), not at the app root.
 - The active book is hardcoded in `app/app.js` line 1 (`BOOK_JSON`). There is no runtime book selector — switching books is a code edit, not a user action.
-- `app/assets/Prize/` contains shared reward assets (unicorn SVG, attribution) plus several unused/experimental unicorn SVGs. Only `noun-unicorn-8080367.svg` and `attribution.json` are referenced by the app.
+- `app/assets/Prize/` contains shared reward assets: the unicorn SVG collection (all `*.svg` are used, picked randomly), the generated `prize.json` manifest, and `attribution.json` (an array; only listed files need attribution). Run `scripts/gen_prize.py` after adding or removing SVGs.

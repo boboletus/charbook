@@ -384,12 +384,14 @@ body[data-variant="simp"] {
   z-index: 2;
   line-height: 1;
   color: var(--accent);
+  text-shadow: 0 0 0.12em currentColor;
   will-change: transform, opacity;
 }
 
 .unicorn-overlay svg {
   width: 65cqh;
   height: 65cqh;
+  filter: drop-shadow(0 0 0.08em currentColor) drop-shadow(0 0 0.04em currentColor);
 }
 
 @keyframes unicornBounce {
@@ -451,6 +453,7 @@ body[data-variant="simp"] {
   right: 0;
   text-align: center;
   font-size: 0.625rem;
+  line-height: 1.3;
   color: var(--text-secondary);
   padding: 0.2rem 0.5rem;
   pointer-events: none;
