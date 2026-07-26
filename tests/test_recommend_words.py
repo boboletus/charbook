@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from recommend_words import parse_freq_table, recommend, _is_cjk
+from recommend_words import parse_freq_table, parse_fluency, recommend, _is_cjk
 
 FREQ_CSV = """rank,char_trad,char_simp,count
 1,的,,19612774
@@ -136,3 +136,38 @@ def test_is_cjk():
     assert not _is_cjk("。")
     assert not _is_cjk("T")
     assert not _is_cjk(" ")
+
+
+def test_parse_fluency(tmp_path):
+    fluency_file = tmp_path / "fluency.txt"
+    fluency_file.write_text("一\n大\n小\n\n 了 \n", encoding="utf-8")
+    known = parse_fluency(fluency_file)
+    assert known == {"一", "大", "小", "了"}
+
+
+def test_parse_fluency_missing_file():
+    known = parse_fluency(Path("/nonexistent/fluency.txt"))
+    assert known == set()
+
+
+def test_recommend_with_known_chars():
+    freq = {
+        "的": (1, 19612774, "的"),
+        "是": (2, 10906495, "是"),
+        "我": (5, 7184509, "我"),
+        "有": (6, 5943526, "有"),
+        "个": (7, 5420669, "個"),
+        "这": (8, 4660570, "這"),
+        "人": (9, 4629727, "人"),
+        "在": (10, 4378562, "在"),
+    }
+    # priority = "一不人"; pre-known adds 是 and 的
+    known = {"是", "的"}
+    results, total, not_learnt, in_top = recommend(
+        BOOK_JSON, freq, top=3, known_chars=known
+    )
+    # 是 and 的 are now excluded along with 一 and 人
+    recommended_chars = [r[1] for r in results]
+    assert "是" not in recommended_chars
+    assert "的" not in recommended_chars
+    assert results[0][1] == "我"  # next highest freq after exclusions
