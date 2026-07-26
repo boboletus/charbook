@@ -1,6 +1,8 @@
 const BOOK_JSON = "assets/哪一个很奇怪/book.json";
+const PRIZE_DIR = "assets/Prize";
 
 let BOOK_DIR = "";
+let unicornSvgEl = null;
 let PAGE_FILES = [];
 let GLOBAL_PRIORITY = "";
 let GLOBAL_PRIORITY_TRAD = "";
@@ -28,7 +30,7 @@ function initDomCache() {
   'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
   'editPriority','editNewWords','editModal','reviewScreen','reviewGrid','reviewTitle',
   'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
-  'editBtn','editCancel','editSave'].forEach(id => dom[id] = document.getElementById(id));
+  'editBtn','editCancel','editSave','creditLine'].forEach(id => dom[id] = document.getElementById(id));
 }
 
 function cleanChars(s) {
@@ -200,11 +202,46 @@ function renderCards() {
 const UNICORN_ANIMATIONS = ['unicornBounce', 'unicornSpin', 'unicornWiggle', 'unicornPop', 'unicornGallop'];
 const UNICORN_DURATION = 1100;
 
+async function loadUnicornIcon() {
+  try {
+    const resp = await fetch(`${PRIZE_DIR}/noun-unicorn-8080367.svg`);
+    if (!resp.ok) return;
+    const text = await resp.text();
+    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+    const svg = doc.querySelector('svg');
+    if (!svg) return;
+    svg.querySelectorAll('text').forEach(t => t.remove());
+    svg.setAttribute('fill', 'currentColor');
+    unicornSvgEl = svg;
+  } catch (e) {
+    console.warn('Failed to load unicorn icon:', e.message);
+  }
+}
+
+async function loadAttribution() {
+  try {
+    const resp = await fetch(`${PRIZE_DIR}/attribution.json`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.attribution) {
+      const template = document.createElement('template');
+      template.innerHTML = data.attribution;
+      dom.creditLine.appendChild(template.content.cloneNode(true));
+    }
+  } catch (e) {
+    console.warn('Failed to load attribution:', e.message);
+  }
+}
+
 function showUnicorn(data) {
   const anim = UNICORN_ANIMATIONS[Math.floor(Math.random() * UNICORN_ANIMATIONS.length)];
   const overlay = document.createElement('div');
   overlay.className = 'unicorn-overlay';
-  overlay.textContent = '🦄';
+  if (unicornSvgEl) {
+    overlay.appendChild(document.importNode(unicornSvgEl, true));
+  } else {
+    overlay.textContent = '🦄';
+  }
   overlay.style.animation = `${anim} ${UNICORN_DURATION}ms var(--ease) forwards`;
   data.wrapper.appendChild(overlay);
   setTimeout(() => overlay.remove(), UNICORN_DURATION);
@@ -491,6 +528,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---- Init ---- */
+loadUnicornIcon();
+loadAttribution();
 loadBook().then(() => {
   if (!PAGE_FILES.length) return;
   goToPage(0);

@@ -383,7 +383,13 @@ body[data-variant="simp"] {
   pointer-events: none;
   z-index: 2;
   line-height: 1;
+  color: var(--accent);
   will-change: transform, opacity;
+}
+
+.unicorn-overlay svg {
+  width: 65cqh;
+  height: 65cqh;
 }
 
 @keyframes unicornBounce {
@@ -435,6 +441,32 @@ body[data-variant="simp"] {
   60%  { transform: translate(-30%, -15%) scale(1); }
   70%  { opacity: 1; transform: translate(0, 0) scale(1); }
   100% { opacity: 0; transform: translate(80%, 0) scale(0.5); }
+}
+
+/* ---- Attribution credit ---- */
+.credit-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.625rem;
+  color: var(--text-secondary);
+  padding: 0.2rem 0.5rem;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.65;
+}
+
+.credit-line a {
+  pointer-events: auto;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 1px;
+}
+
+.credit-line:empty {
+  display: none;
 }
 
 /* ---- Review screen ---- */
