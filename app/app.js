@@ -1,4 +1,4 @@
-const BOOK_JSON = "assets/独角兽妹妹/book.json";
+const BOOK_JSON = "assets/安稳与独角兽/book.json";
 const PRIZE_DIR = "assets/Prize";
 
 let BOOK_DIR = "";
