@@ -19,6 +19,7 @@ let priorityRevealed = 0;
 let priorityTotal = 0;
 let autoRevealing = false;
 let completedPages = new Set();
+let spotlightIndex = -1;
 
 let reviewActive = false;
 let reviewChars = [];
@@ -130,6 +131,7 @@ function renderCards() {
   cardData = [];
   revealedCount = 0;
   priorityRevealed = 0;
+  spotlightIndex = -1;
   renderReminder();
 
   const page = pages[currentPage];
@@ -389,6 +391,7 @@ function revealAll() {
 }
 
 function fadeAllCards() {
+  clearSpotlight();
   const total = cardData.length;
   cardData.forEach((d, i) => {
     setTimeout(() => {
@@ -408,7 +411,45 @@ function resetAll() {
   });
   revealedCount = 0;
   priorityRevealed = 0;
+  clearSpotlight();
   updateProgress();
+}
+
+/* ---- Reading spotlight (keyboard word guide) ---- */
+function clearSpotlight() {
+  if (spotlightIndex >= 0 && cardData[spotlightIndex]) {
+    cardData[spotlightIndex].wrapper.classList.remove('spotlight');
+  }
+  spotlightIndex = -1;
+}
+
+function setSpotlight(index) {
+  clearSpotlight();
+  if (index < 0 || index >= cardData.length) return;
+  spotlightIndex = index;
+  cardData[index].wrapper.classList.add('spotlight');
+}
+
+function advanceSpotlight(dir) {
+  if (!cardData.length || reviewActive) return;
+  let next;
+  if (spotlightIndex < 0) {
+    next = dir > 0 ? 0 : cardData.length - 1;
+  } else {
+    next = Math.min(cardData.length - 1, Math.max(0, spotlightIndex + dir));
+  }
+  setSpotlight(next);
+}
+
+function revealSpotlight() {
+  if (spotlightIndex < 0 || !cardData[spotlightIndex] || reviewActive) return;
+  const data = cardData[spotlightIndex];
+  if (!data.wrapper.classList.contains('revealed')) {
+    toggleCard(data);
+  }
+  if (!autoRevealing && spotlightIndex < cardData.length - 1) {
+    setSpotlight(spotlightIndex + 1);
+  }
 }
 
 function goToPage(idx) {
@@ -603,6 +644,9 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === 'Escape' && reviewActive) { hideReview(); return; }
+  if (!reviewActive && e.key === 'ArrowDown') { e.preventDefault(); advanceSpotlight(1); return; }
+  if (!reviewActive && e.key === 'ArrowUp') { e.preventDefault(); advanceSpotlight(-1); return; }
+  if (!reviewActive && e.key === ' ') { e.preventDefault(); revealSpotlight(); return; }
   if (e.key === 'ArrowLeft') prevPage();
   if (e.key === 'ArrowRight') nextPage();
   if (e.key === 't' || e.key === 'T') toggleVariant(charVariant === 'trad' ? 'simp' : 'trad');

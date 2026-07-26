@@ -1,4 +1,4 @@
-#+last_modified: 2026-07-25 23:02:50
+#+last_modified: 2026-07-26 14:48:37
 
 * User flow
 :PROPERTIES:
@@ -13,7 +13,7 @@ The review screen splits characters into two labeled groups: 複習 (review) for
 
 A reminder strip shows the current page's 複習 (priority) and 新字 (new word) characters in regular reading font. Only characters present on the current page are listed. Each group shows only when it has characters on the page. The strip updates when navigating pages or toggling 繁/簡. On landscape (wide) screens the strip is a narrow vertical sidebar to the right of the page image. On portrait (tall) screens it becomes a horizontal strip below the page image.
 
-The parent reads the page. The child taps cards they recognize. Each tapped card fades its background to reveal the illustration.
+The parent reads the page. Phrase by phrase while hitting "down" button. When the child recognize a word they can press space, or taps cards. Each tapped card fades its background to reveal the illustration.
 
 Tapping a priority card counts down the priority counter in the toolbar.
 
@@ -97,3 +97,13 @@ Work on a branch if the user requests it. Squash-merge to ~main~ after all steps
 ** Feedback
 
 Tell the user what you did. Tell them what you verified. Mention any issues or trade-offs. Keep it short.
+
+* New book flow
+
+Use =python scripts/extract_pdf.py --name 安稳与独角兽 "/home/yizhe/Src/charbook/安稳与独角兽.pdf"= to extract all pages of a new book it a folder.
+
+New book might have preface, intro, end note. Children are not going to care about them. Remove those pages.
+
+Then run =python scripts/gen_book.py 安稳与独角兽= to create a template to dictate the book content.
+
+Dictate the book content to the generate json. If needed, use =python scripts/convert_dual.py 哪一个很奇怪= to populate both traditional and simplified chinese. 

@@ -414,6 +414,29 @@ body[data-variant="simp"] {
   transition-timing-function: ease-out;
 }
 
+/* ---- Reading spotlight (keyboard word guide) ---- */
+.cards-overlay .card-face::after {
+  content: '';
+  position: absolute;
+  top: 5cqmin;
+  right: 5cqmin;
+  width: 14cqmin;
+  height: 14cqmin;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px oklch(0.70 0.16 50 / 0.5);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition-property: opacity;
+  transition-duration: 0.25s;
+  transition-timing-function: var(--ease);
+}
+
+.cards-overlay .card-wrapper.spotlight .card-face::after {
+  opacity: 1;
+}
+
 @keyframes cardEnter {
   from {
     opacity: 0;
