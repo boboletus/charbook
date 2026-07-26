@@ -1,4 +1,4 @@
-const BOOK_JSON = "assets/哪一个很奇怪/book.json";
+const BOOK_JSON = "assets/独角兽妹妹/book.json";
 const PRIZE_DIR = "assets/Prize";
 
 let BOOK_DIR = "";
@@ -534,6 +534,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft') prevPage();
   if (e.key === 'ArrowRight') nextPage();
   if (e.key === 't' || e.key === 'T') toggleVariant(charVariant === 'trad' ? 'simp' : 'trad');
+  if (e.key === 'r' || e.key === 'R') revealAll();
 });
 
 /* ---- Init ---- */
