@@ -223,11 +223,20 @@ async function loadAttribution() {
     const resp = await fetch(`${PRIZE_DIR}/attribution.json`);
     if (!resp.ok) return;
     const data = await resp.json();
-    if (data.attribution) {
-      const template = document.createElement('template');
-      template.innerHTML = data.attribution;
-      dom.creditLine.appendChild(template.content.cloneNode(true));
+    if (!data.icon_name || !data.artist || !data.source) return;
+    const link = document.createElement('a');
+    if (data.source_url) {
+      link.href = data.source_url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.title = data.icon_name + ' Icons';
     }
+    link.textContent = data.source;
+    dom.creditLine.append(
+      `${data.icon_name} by ${data.artist} from `,
+      link,
+      data.license ? ` (${data.license})` : ''
+    );
   } catch (e) {
     console.warn('Failed to load attribution:', e.message);
   }

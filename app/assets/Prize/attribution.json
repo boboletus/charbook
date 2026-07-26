@@ -1,5 +1,9 @@
 {
   "type": "unicorn",
   "file": "noun-unicorn-8080367.svg",
-  "attribution": "Unicorn by BnB Studio from <a href=\"https://thenounproject.com/browse/icons/term/unicorn/\" target=\"_blank\" title=\"Unicorn Icons\">Noun Project</a> (CC BY 3.0)"
+  "icon_name": "Unicorn",
+  "artist": "BnB Studio",
+  "source": "Noun Project",
+  "source_url": "https://thenounproject.com/browse/icons/term/unicorn/",
+  "license": "CC BY 3.0"
 }
