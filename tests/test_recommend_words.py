@@ -87,13 +87,15 @@ def test_recommend_basic():
     # priority = "一不人", so these are excluded
     # book chars: 我 是 一 个 人 这 很 好 的 有 在
     # not learnt: 我 是 个 这 很 好 的 有 在 (一 and 人 and 不 excluded)
-    # ranked: 的(1) 是(2) 我(5) 有(6) 个(7) 这(8) 在(10)  [很 and 好 not in freq]
-    assert results[0][0] == 1  # 的
-    assert results[0][1] == "的"
-    assert results[1][0] == 2  # 是
-    assert results[1][1] == "是"
-    assert results[2][0] == 5  # 我
-    assert results[2][1] == "我"
+    # ranked by in-book frequency (desc), then general rank (asc):
+    #   的 (2×, rank 1), 个 (2×, rank 7), 是 (1×, rank 2), 我 (1×, rank 5), ...
+    # 很 and 好 are not in freq
+    assert results[0][0] == 2   # book_count
+    assert results[0][1] == 1   # general rank
+    assert results[0][2] == "的"
+    assert results[1][0] == 2   # 个 also appears 2× in the book
+    assert results[1][2] == "个"
+    assert results[2][2] == "是"  # single occurrence, best general rank
     assert len(results) == 3
 
 
@@ -109,8 +111,8 @@ def test_recommend_all():
     results, total, not_learnt, in_top = recommend(BOOK_JSON, freq, top=3, show_all=True)
     # 很 and 好 are not in freq, so only 6 candidates
     assert len(results) == 6
-    assert results[0][1] == "的"
-    assert results[-1][1] == "在"
+    assert results[0][2] == "的"  # highest in-book frequency (2×)
+    assert results[-1][2] == "在"  # single occurrence, worst general rank
 
 
 def test_recommend_no_candidates():
@@ -125,8 +127,8 @@ def test_recommend_pages():
     }
     results, total, not_learnt, in_top = recommend(BOOK_JSON, freq, top=3)
     assert len(results) == 1
-    assert results[0][1] == "我"
-    assert results[0][4] == [1]  # appears on page 1
+    assert results[0][2] == "我"
+    assert results[0][5] == [1]  # appears on page 1
 
 
 def test_is_cjk():
@@ -167,7 +169,53 @@ def test_recommend_with_known_chars():
         BOOK_JSON, freq, top=3, known_chars=known
     )
     # 是 and 的 are now excluded along with 一 and 人
-    recommended_chars = [r[1] for r in results]
+    recommended_chars = [r[2] for r in results]
     assert "是" not in recommended_chars
     assert "的" not in recommended_chars
-    assert results[0][1] == "我"  # next highest freq after exclusions
+    # 的 (2×) excluded; 个 (2×) is the top remaining by in-book frequency
+    assert results[0][2] == "个"
+    assert results[0][0] == 2  # book_count
+
+
+def test_recommend_book_frequency_beats_general_rank():
+    # A character with a worse general rank but higher in-book frequency
+    # should be recommended first: the book's own frequency wins.
+    book = {
+        "book": "testbook2",
+        "base": "assets/testbook2",
+        "priority": "",
+        "pages": [
+            {"page": 1, "chars": "在在在在"},  # 在: rank 10, but 4× in book
+            {"page": 2, "chars": "的"},  # 的: rank 1, but only 1× in book
+        ],
+    }
+    freq = {
+        "的": (1, 19612774, "的"),
+        "在": (10, 4378562, "在"),
+    }
+    results, total, not_learnt, in_top = recommend(book, freq, top=3)
+    # 在 recurs throughout the book, so it ranks first despite rank #10
+    assert results[0][2] == "在"
+    assert results[0][0] == 4  # book_count
+    assert results[1][2] == "的"
+    assert results[1][0] == 1  # book_count
+
+
+def test_recommend_book_frequency_tiebreak_general_rank():
+    # When two characters appear equally often in the book, the one with the
+    # better (lower) general frequency rank wins as a tiebreaker.
+    book = {
+        "book": "testbook3",
+        "base": "assets/testbook3",
+        "priority": "",
+        "pages": [
+            {"page": 1, "chars": "的是"},  # both appear 1×
+        ],
+    }
+    freq = {
+        "的": (1, 19612774, "的"),
+        "是": (2, 10906495, "是"),
+    }
+    results, total, not_learnt, in_top = recommend(book, freq, top=3)
+    assert results[0][2] == "的"  # rank 1 beats rank 2 on tie
+    assert results[1][2] == "是"

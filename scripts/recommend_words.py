@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
-"""Recommend the next high-frequency characters to learn.
+"""Recommend the best characters to learn next for a specific book.
 
-Reads a frequency-ranked character list from a CSV file (top N by frequency
-rank), reads book.json to find characters that appear in the book but are not
-yet in the priority list, and recommends the highest-frequency ones.
+Ranks characters by how often they appear in the given book (book frequency),
+keeping only those that also appear in a general frequency table
+(freq_table.csv) and are not already known (fluency.txt) or in the book's
+priority list. A character that recurs throughout the book gives the child
+more practice opportunities, so it is recommended before a rarer one even if
+the rarer character is more common in general Chinese.
+
+The recommendation set is, in other words:
+    (characters in the book, ranked by in-book frequency)
+    ∩ (freq_table.csv, within --max-rank)
+    − (fluency.txt ∪ book priority list)
 
 Usage:
     .venv/bin/python scripts/recommend_words.py 哪一个很奇怪
@@ -78,19 +86,27 @@ def parse_freq_table(freq_path, max_rank=1000):
 
 
 def recommend(data, freq_by_simp, top=3, show_all=False, known_chars=None):
-    """Return a sorted list of (rank, simp, trad, count, pages) for characters
-    in the book that are not in the priority list or pre-known set and have a
-    frequency rank."""
+    """Return a sorted list of (book_count, rank, simp, trad, count, pages) for
+    characters in the book that are not in the priority list or pre-known set
+    and have a frequency rank.
+
+    Candidates are ranked by how often they occur in this book (book_count,
+    descending) so the child gets the most practice; the general frequency rank
+    (ascending) breaks ties. ``book_count`` is the total number of times the
+    character appears across all pages.
+    """
     priority = data.get("priority", "")
     learnt = set(priority)
     if known_chars:
         learnt |= known_chars
 
     char_pages = {}
+    char_count = {}
     for entry in data.get("pages", []):
         page = entry.get("page", 0)
         for ch in entry.get("chars", ""):
             if _is_cjk(ch):
+                char_count[ch] = char_count.get(ch, 0) + 1
                 seen = char_pages.setdefault(ch, [])
                 if not seen or seen[-1] != page:
                     seen.append(page)
@@ -102,9 +118,9 @@ def recommend(data, freq_by_simp, top=3, show_all=False, known_chars=None):
         info = freq_by_simp.get(ch)
         if info:
             rank, count, char_trad = info
-            candidates.append((rank, ch, char_trad, count, pages))
+            candidates.append((char_count[ch], rank, ch, char_trad, count, pages))
 
-    candidates.sort(key=lambda x: x[0])
+    candidates.sort(key=lambda x: (-x[0], x[1]))
     n = len(candidates) if show_all else top
     return candidates[:n], len(char_pages), sum(1 for ch in char_pages if ch not in learnt), len(candidates)
 
@@ -155,10 +171,10 @@ def recommend_words(
         return
 
     label = "All candidates" if all else f"Top {len(results)} recommendations"
-    print(f"{label}:")
-    for i, (rank, ch, ch_trad, count, pages) in enumerate(results, 1):
+    print(f"{label} (ranked by in-book frequency):")
+    for i, (book_count, rank, ch, ch_trad, count, pages) in enumerate(results, 1):
         pages_str = ", ".join(str(p) for p in pages[:5])
         if len(pages) > 5:
             pages_str += f", ... ({len(pages)} pages)"
         trad_display = f" ({ch_trad})" if ch_trad != ch else ""
-        print(f"  #{i}  rank #{rank:<5} {ch}{trad_display}  count: {count:>12,}  pages: {pages_str}")
+        print(f"  #{i}  {ch}{trad_display}  in-book: {book_count}×  rank #{rank:<5}  count: {count:>12,}  pages: {pages_str}")
