@@ -928,3 +928,36 @@ body[data-variant="simp"] {
     font-size: 0.875rem;
   }
 }
+
+/* ---- Portrait orientation: reminder strip on bottom ---- */
+@media (orientation: portrait) {
+  .reading-layout {
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+  }
+  .page-wrapper {
+    flex: 1;
+    min-height: 0;
+  }
+  .book-page {
+    max-height: 100%;
+  }
+  .page-reminder {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    padding-top: 0.25rem;
+  }
+  .reminder-group {
+    flex-direction: row;
+    align-items: baseline;
+  }
+  .reminder-label {
+    writing-mode: horizontal-tb;
+  }
+  .reminder-chars {
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+  }
+}
