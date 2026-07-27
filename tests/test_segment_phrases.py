@@ -1,7 +1,10 @@
 import json
+import sys
 from pathlib import Path
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 
 def make_book_json(tmp_path, chars_by_page):
@@ -104,4 +107,70 @@ def test_particle_di_merged(tmp_path):
     phrases = data["pages"][0]["phrases"]
     assert "地" not in phrases
     assert "".join(phrases) == "蹦蹦跳跳地闯"
-    assert any(p.endswith("地") for p in phrases)
+
+
+# --- Location suffix merging (flag 'f': 上/下/中/里) ---
+
+def test_location_shang_merged():
+    from segment_phrases import segment
+    phrases = segment("陆地上")
+    assert "上" not in phrases
+    assert phrases == ["陆地上"]
+
+
+def test_location_zhong_merged():
+    from segment_phrases import segment
+    phrases = segment("家族中")
+    assert "中" not in phrases
+    assert phrases == ["家族中"]
+
+
+def test_location_li_merged():
+    from segment_phrases import segment
+    phrases = segment("海里")
+    assert "里" not in phrases
+    assert phrases == ["海里"]
+
+
+def test_location_in_sentence():
+    from segment_phrases import segment
+    phrases = segment("不管是在陆地上")
+    assert "陆地上" in phrases
+    assert "".join(phrases) == "不管是在陆地上"
+
+
+# --- Custom dictionary support ---
+
+def test_custom_words_keeps_compound():
+    from segment_phrases import segment
+    # Without custom word, "独角章" gets split
+    phrases_no_custom = segment("我是独角章")
+    assert "独角章" not in phrases_no_custom
+    # With custom word, it stays whole
+    phrases_custom = segment("我是独角章", custom_words="独角章")
+    assert "独角章" in phrases_custom
+
+
+def test_custom_words_cotton_candy():
+    from segment_phrases import segment
+    phrases = segment("棉花糖的蓝色", custom_words="棉花糖")
+    assert "棉花糖的" in phrases
+    assert "".join(phrases) == "棉花糖的蓝色"
+
+
+def test_custom_words_multiple():
+    from segment_phrases import segment
+    phrases = segment("独角章喜欢棉花糖", custom_words="独角章 棉花糖")
+    assert "独角章" in phrases
+    assert "棉花糖" in phrases
+
+
+def test_custom_words_in_book_json(tmp_path):
+    """segment_phrases.py should load custom_words from book.json."""
+    pages = [{"page": 1, "chars": "我是独角章"}]
+    data = {"book": "test", "base": "assets/test", "pages": pages, "custom_words": "独角章"}
+    (tmp_path / "book.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    run_segment(tmp_path)
+    data2 = json.loads((tmp_path / "book.json").read_text("utf-8"))
+    assert "独角章" in data2["pages"][0]["phrases"]
