@@ -1,4 +1,7 @@
-const BOOK_JSON = "assets/安稳与独角兽/book.json";
+const LIBRARY = [
+  { name: "安穩與獨角獸", json: "assets/安稳与独角兽/book.json", cover: "assets/安稳与独角兽/page1.jpg" },
+  { name: "哪一個很奇怪", json: "assets/哪一个很奇怪/book.json", cover: "assets/哪一个很奇怪/page5.jpg" },
+];
 const PRIZE_DIR = "assets/Prize";
 
 let BOOK_DIR = "";
@@ -11,6 +14,7 @@ let GLOBAL_NEW_WORDS_TRAD = "";
 let charVariant = "trad";
 let pages = [];
 let currentPage = 0;
+let libraryActive = false;
 
 let cards = [];
 let cardData = [];
@@ -32,7 +36,7 @@ function initDomCache() {
     'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
     'editPhrases','editPriority','editNewWords','editModal','reviewScreen','reviewGrid','reviewTitle',
     'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
-    'editBtn','editCancel','editSave','pageReminder'].forEach(id => dom[id] = document.getElementById(id));
+    'editBtn','editCancel','editSave','pageReminder','libraryScreen','libraryGrid','libraryBtn','libraryTitle'].forEach(id => dom[id] = document.getElementById(id));
 }
 
 function cleanChars(s) {
@@ -65,9 +69,9 @@ function computeCols(numChars, imgW, imgH) {
   return Math.max(1, Math.round(Math.sqrt(numChars * aspect)));
 }
 
-async function loadBook() {
+async function loadBook(jsonPath) {
   try {
-    const resp = await fetch(BOOK_JSON);
+    const resp = await fetch(jsonPath);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     BOOK_DIR = data.base;
@@ -650,6 +654,114 @@ function hideReview() {
   updateProgress();
 }
 
+/* ---- Library screen ---- */
+function renderLibrary() {
+  dom.libraryTitle.textContent = charVariant === 'trad' ? '圖書館' : '图书馆';
+  const grid = dom.libraryGrid;
+  grid.replaceChildren();
+  LIBRARY.forEach((entry, i) => {
+    const card = document.createElement('button');
+    card.className = 'book-card';
+    card.style.animationDelay = (i * 100) + 'ms';
+    card.setAttribute('aria-label', entry.name);
+
+    const cover = document.createElement('img');
+    cover.className = 'book-card-cover';
+    cover.src = entry.cover;
+    cover.alt = entry.name;
+    cover.loading = 'lazy';
+
+    const title = document.createElement('span');
+    title.className = 'book-card-title';
+    title.textContent = entry.name;
+
+    card.append(cover, title);
+    card.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      selectBook(entry);
+    });
+    grid.appendChild(card);
+  });
+}
+
+function showLibrary() {
+  libraryActive = true;
+  reviewActive = false;
+  dom.reviewScreen.classList.remove('active');
+  dom.libraryScreen.classList.add('active');
+  renderLibrary();
+  dom.prevBtn.disabled = true;
+  dom.nextBtn.disabled = true;
+  dom.reviewBtn.disabled = true;
+  dom.editBtn.disabled = true;
+  dom.revealBtn.disabled = true;
+  dom.resetBtn.disabled = true;
+  dom.priorityText.textContent = 'Library';
+  dom.priorityText.classList.add('unset');
+  dom.pageIndicator.textContent = '— / —';
+}
+
+function hideLibrary() {
+  libraryActive = false;
+  dom.libraryScreen.classList.remove('active');
+}
+
+function resetBookState() {
+  currentPage = 0;
+  completedPages.clear();
+  cards = [];
+  cardData = [];
+  revealedCount = 0;
+  priorityRevealed = 0;
+  priorityTotal = 0;
+  autoRevealing = false;
+  spotlightIndex = -1;
+  phraseGroups = [];
+  reviewChars = [];
+  reviewedIndices.clear();
+  reviewActive = false;
+  PAGE_FILES = [];
+  pages = [];
+  BOOK_DIR = "";
+  GLOBAL_PRIORITY = "";
+  GLOBAL_PRIORITY_TRAD = "";
+  GLOBAL_NEW_WORDS = "";
+  GLOBAL_NEW_WORDS_TRAD = "";
+  dom.reviewScreen.classList.remove('active');
+  dom.emptyState.hidden = true;
+  dom.emptyState.querySelector('p').innerHTML =
+    'This page hasn\'t been set up yet. Tap <strong>Edit</strong> to add characters for this page.';
+  dom.pageWrapper.style.visibility = 'hidden';
+  dom.bookPage.src = '';
+}
+
+function selectBook(entry) {
+  hideLibrary();
+  resetBookState();
+  loadBook(entry.json).then(() => {
+    if (!PAGE_FILES.length) return;
+    charVariant = 'trad';
+    document.body.dataset.variant = charVariant;
+    document.documentElement.lang = getActiveLang();
+    document.querySelectorAll('.segmented-btn').forEach(btn => {
+      const isActive = btn.dataset.variant === charVariant;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive);
+    });
+    dom.editBtn.disabled = false;
+    dom.resetBtn.disabled = false;
+    dom.revealBtn.disabled = false;
+    const hasReviewContent = getActivePriority() || getActiveNewWords();
+    dom.reviewBtn.disabled = !hasReviewContent;
+    if (hasReviewContent) {
+      showReview();
+      setTimeout(() => goToPage(0), 320);
+    } else {
+      goToPage(0);
+    }
+  });
+}
+
 /* ---- Variant toggle ---- */
 function toggleVariant(variant) {
   if (variant === charVariant) return;
@@ -661,7 +773,8 @@ function toggleVariant(variant) {
     btn.classList.toggle('active', isActive);
     btn.setAttribute('aria-pressed', isActive);
   });
-  if (reviewActive) renderReviewCards();
+  if (libraryActive) renderLibrary();
+  else if (reviewActive) renderReviewCards();
   else if (PAGE_FILES.length) renderCards();
 }
 
@@ -676,6 +789,7 @@ dom.editCancel.addEventListener('click', closeEdit);
 dom.editSave.addEventListener('click', saveEdit);
 dom.reviewBtn.addEventListener('click', showReview);
 dom.startReadingBtn.addEventListener('click', hideReview);
+dom.libraryBtn.addEventListener('click', showLibrary);
 document.querySelectorAll('.segmented-btn').forEach(btn => {
   btn.addEventListener('click', () => toggleVariant(btn.dataset.variant));
 });
@@ -689,21 +803,16 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === 'Escape' && reviewActive) { hideReview(); return; }
+  if (e.key === 't' || e.key === 'T') { toggleVariant(charVariant === 'trad' ? 'simp' : 'trad'); return; }
+  if (libraryActive) return;
   if (!reviewActive && e.key === 'ArrowDown') { e.preventDefault(); advanceSpotlight(1); return; }
   if (!reviewActive && e.key === 'ArrowUp') { e.preventDefault(); advanceSpotlight(-1); return; }
   if (!reviewActive && e.key === ' ') { e.preventDefault(); revealSpotlight(); return; }
   if (e.key === 'ArrowLeft') prevPage();
   if (e.key === 'ArrowRight') nextPage();
-  if (e.key === 't' || e.key === 'T') toggleVariant(charVariant === 'trad' ? 'simp' : 'trad');
   if (e.key === 'r' || e.key === 'R') revealAll();
 });
 
 /* ---- Init ---- */
 loadPrizeSvgs();
-loadBook().then(() => {
-  if (!PAGE_FILES.length) return;
-  goToPage(0);
-  const hasReviewContent = getActivePriority() || getActiveNewWords();
-  dom.reviewBtn.disabled = !hasReviewContent;
-  if (hasReviewContent) showReview();
-});
+showLibrary();

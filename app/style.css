@@ -808,6 +808,116 @@ body[data-variant="simp"] {
   margin-top: 1.25rem;
 }
 
+/* ---- Library screen ---- */
+.library-screen {
+  position: absolute;
+  top: var(--toolbar-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+  z-index: 8;
+  opacity: 0;
+  pointer-events: none;
+  transition-property: opacity;
+  transition-duration: 0.3s;
+  transition-timing-function: var(--ease);
+}
+
+.library-screen.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.library-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.library-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  line-height: 1.1;
+  font-family: var(--font-cn);
+}
+
+.library-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.library-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  max-width: 480px;
+}
+
+.book-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  animation: bookCardEnter 0.35s var(--ease) backwards;
+}
+
+.book-card:focus-visible {
+  outline: none;
+}
+
+.book-card:focus-visible .book-card-cover {
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-image);
+}
+
+.book-card-cover {
+  width: 168px;
+  height: 236px;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  outline: 1px solid oklch(0 0 0 / 0.1);
+  box-shadow: var(--shadow-image);
+  transition-property: scale, box-shadow;
+  transition-duration: 0.15s;
+  transition-timing-function: ease-out;
+}
+
+.book-card:hover .book-card-cover {
+  box-shadow: 0 12px 40px oklch(0 0 0 / 0.16), 0 4px 12px oklch(0 0 0 / 0.1);
+}
+
+.book-card:active .book-card-cover {
+  scale: 0.96;
+}
+
+.book-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font-cn);
+  letter-spacing: 0.02em;
+}
+
+@keyframes bookCardEnter {
+  from { opacity: 0; scale: 0.85; }
+  to { opacity: 1; scale: 1; }
+}
+
 /* ---- Reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
   .card-face {
@@ -839,6 +949,12 @@ body[data-variant="simp"] {
   }
   .page-reminder {
     animation: none;
+  }
+  .book-card {
+    animation: none;
+  }
+  .library-screen {
+    transition: opacity 0.2s ease;
   }
 }
 
@@ -922,6 +1038,23 @@ body[data-variant="simp"] {
   .review-start-btn {
     padding: 0.5rem 1.25rem;
     font-size: 0.875rem;
+  }
+  .library-grid {
+    gap: 1.5rem;
+  }
+  .book-card-cover {
+    width: 140px;
+    height: 196px;
+  }
+  .library-title {
+    font-size: 1.25rem;
+  }
+  .library-subtitle {
+    font-size: 0.8125rem;
+  }
+  .library-screen {
+    gap: 1.5rem;
+    padding: 1.5rem 1rem;
   }
 }
 

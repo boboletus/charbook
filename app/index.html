@@ -25,6 +25,7 @@
           <button class="segmented-btn active" data-variant="trad" aria-pressed="true">繁</button>
           <button class="segmented-btn" data-variant="simp" aria-pressed="false">簡</button>
         </div>
+        <button class="btn" id="libraryBtn">Library</button>
         <button class="btn" id="reviewBtn" disabled>Review</button>
         <button class="btn" id="editBtn">Edit</button>
         <button class="btn" id="resetBtn">Reset</button>
@@ -53,6 +54,14 @@
       <div class="review-actions">
         <button class="btn review-start-btn" id="startReadingBtn">Start Reading →</button>
       </div>
+    </main>
+
+    <main class="library-screen" id="libraryScreen">
+      <div class="library-header">
+        <h1 class="library-title" id="libraryTitle">圖書館</h1>
+        <p class="library-subtitle">Choose a book to read</p>
+      </div>
+      <div class="library-grid" id="libraryGrid"></div>
     </main>
   </div>
 

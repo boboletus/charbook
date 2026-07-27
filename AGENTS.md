@@ -17,7 +17,7 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
 
 ## Architecture
 
-- `app/app.js` — all JS (state, rendering, event listeners, variant toggle, review screen, unicorn animation). **The active book is hardcoded on line 1** as `BOOK_JSON`; there is no book-switching UI. To change books, edit that constant to point at a different `assets/<name>/book.json`.
+- `app/app.js` — all JS (state, rendering, event listeners, variant toggle, review screen, library screen, unicorn animation). **The available books are defined on line 1** as a `LIBRARY` array of `{ name, json, cover }` entries; the app shows a library screen on load and the user picks a book at runtime.
 - `app/index.html` — HTML structure only (toolbar, page area, review screen, edit modal).
 - `app/style.css` — all CSS (layout, cards, animations, responsive, reduced-motion).
 - `app/assets/<book-name>/book.json` — master data: page list, characters, priority, new words. Fetched at runtime. Single source of truth; the app does not use `localStorage`.
@@ -182,5 +182,5 @@ GitHub Actions deploys `app/` to GitHub Pages on push to `main` (`.github/workfl
 - The venv uses system Python 3.14 at `/usr/bin/python3.14` (mise's Python 3.14 has a broken venv module). If `python3 -m venv` fails, use `/usr/bin/python3.14 -m venv .venv`.
 - `.opencode/`, `.agents/`, `.claude/`, `skills-lock.json`, and `*.pdf` are gitignored. `book.js` was removed — do not recreate it; use `book.json` fetched at runtime.
 - `book.json` lives inside the book's asset directory (`app/assets/<name>/book.json`), not at the app root.
-- The active book is hardcoded in `app/app.js` line 1 (`BOOK_JSON`). There is no runtime book selector — switching books is a code edit, not a user action.
+- The available books are defined on line 1 of `app/app.js` as a `LIBRARY` array. The app shows a library screen on load and the user picks a book at runtime. Adding a book means adding an entry to the `LIBRARY` array (a code edit, not a user action).
 - `app/assets/Prize/` contains shared reward assets: the unicorn SVG collection (all `*.svg` are used, picked randomly) and the generated `prize.json` manifest. Run `scripts/gen_prize.py` after adding or removing SVGs.

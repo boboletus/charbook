@@ -1,9 +1,13 @@
-#+last_modified: 2026-07-26 21:31:43
+#+last_modified: 2026-07-26 22:50:00
 
 * User flow
 :PROPERTIES:
 :ID:       0f6daf9a-3d94-419f-ad4f-e08a1e40b0f5
 :END:
+
+** Library Screen
+
+On first load, a full-screen library overlay shows the available books as cover cards (first page image + title). Tapping a card loads that book and proceeds to the review screen (if the book has priority or new-word characters) or directly to reading. The "Library" toolbar button re-opens the library at any time to switch books. The 繁/簡 toggle works in the library (updates the title and book names). All reading keyboard shortcuts are disabled while the library is open; only T (variant toggle) works.
 
 ** Review Screen
 
