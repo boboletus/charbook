@@ -17,21 +17,22 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
 
 ## Architecture
 
-- `app/app.js` — all JS (state, rendering, event listeners, variant toggle, review screen, library screen, unicorn animation). **The available books are defined on line 1** as a `LIBRARY` array of `{ name, json, cover }` entries; the app shows a library screen on load and the user picks a book at runtime.
+- `app/app.js` — all JS (state, rendering, event listeners, variant toggle, review screen, library screen, unicorn animation, runtime script conversion). **The available books are defined on line 1** as a `LIBRARY` array of `{ name, json, cover }` entries; the app shows a library screen on load and the user picks a book at runtime.
 - `app/index.html` — HTML structure only (toolbar, page area, review screen, edit modal).
 - `app/style.css` — all CSS (layout, cards, animations, responsive, reduced-motion).
+- `app/opencc-t2cn.js` — vendored opencc-js UMD build for traditional→simplified conversion (loaded dynamically when a `trad`-script book is viewed in 簡 mode).
+- `app/opencc-cn2t.js` — vendored opencc-js UMD build for simplified→traditional conversion (loaded dynamically when a `simp`-script book is viewed in 繁 mode).
 - `app/assets/<book-name>/book.json` — master data: page list, characters, priority, new words. Fetched at runtime. Single source of truth; the app does not use `localStorage`.
 - `app/assets/<book-name>/pageN.jpg` — page images extracted from PDF.
 - `app/assets/Prize/` — shared reward assets, **not a book**. Holds the unicorn SVG collection (every `*.svg` is a candidate, picked at random on each new-word tap) and `prize.json` (the generated manifest of those SVGs, loaded by `loadPrizeSvgs()` via the `PRIZE_DIR` constant). Icons come from OpenSVG, which permits commercial and personal use with no attribution requirement.
 - `app/assets/fluency.txt` — newline-delimited list of characters the child already knows; `recommend_words.py` excludes these from recommendations.
 - `scripts/extract_pdf.py` — render PDF pages to JPGs.
 - `scripts/gen_book.py` — generate/sync `book.json` from page images.
-- `scripts/convert_dual.py` — convert book.json to dual simplified+traditional format (adds `chars_trad`/`priority_trad`/`new_words_trad` via OpenCC `s2tw`).
 - `scripts/recommend_words.py` — recommend high-frequency characters to add to priority list (reads `scripts/freq_table.csv` and `app/assets/fluency.txt`).
 - `scripts/segment_phrases.py` — auto-segment each page's `chars` into phrases using jieba, stored as `phrases` array per page in `book.json`.
 - `scripts/gen_prize.py` — generate `app/assets/Prize/prize.json` manifest listing every unicorn `*.svg` so the static app can pick one at random.
 - `docs/flows.org` — human-facing org-mode notes: the user flow and this development workflow. Update the user flow there when a feature changes user-facing behavior.
-- `tests/` — pytest smoke tests for `gen_book.py`, `gen_prize.py`, `convert_dual.py`, `recommend_words.py`, and `segment_phrases.py`.
+- `tests/` — pytest smoke tests for `gen_book.py`, `gen_prize.py`, `recommend_words.py`, and `segment_phrases.py`.
 
 ## book.json format
 
@@ -39,19 +40,18 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
 {
   "book": "哪一个很奇怪",
   "base": "assets/哪一个很奇怪",
+  "script": "trad",
   "priority": "小一不人了",
-  "priority_trad": "小一不人了",
   "new_words": "奇怪",
-  "new_words_trad": "奇怪",
   "pages": [
-    { "page": 5, "chars": "哪一个很奇怪", "chars_trad": "哪一個很奇怪", "phrases": ["哪", "一个", "很", "奇怪"], "phrases_trad": ["哪", "一個", "很", "奇怪"] }
+    { "page": 5, "chars": "哪一個很奇怪", "phrases": ["哪", "一個", "很", "奇怪"] }
   ]
 }
 ```
 
+- `script` declares the source script: `"trad"` or `"simp"`. The app stores text in this script only; the other script is generated at runtime via opencc-js. The 繁/簡 toggle in the toolbar switches display.
 - `priority` is book-level (applies to all pages), not per-page.
 - `new_words` is book-level; tapping a new-word card triggers a unicorn animation.
-- `priority_trad`, `chars_trad`, and `new_words_trad` are traditional Chinese variants, generated from the simplified fields via OpenCC (`s2tw`). The app defaults to traditional; a 繁/簡 toggle in the toolbar switches display.
 - `cols` is no longer in the schema — the app auto-calculates columns from image aspect ratio to make cards roughly square.
 - Punctuation in `chars` is kept and becomes cards like any other character.
 - Page numbers in the JSON correspond to `pageN.jpg` filenames (may not start at 1).
@@ -69,10 +69,6 @@ python scripts/extract_pdf.py --name 哪一个很奇怪 "book.pdf"
 # Generate or reconcile book.json from page images
 python scripts/gen_book.py 哪一个很奇怪
 # Use --reset to wipe chars back to empty (keeps page list + priority)
-
-# Convert book.json to dual simplified+traditional format
-python scripts/convert_dual.py 哪一个很奇怪
-# Use --reset-trad to re-convert all traditional fields from simplified
 
 # Auto-segment each page's chars into phrases
 python scripts/segment_phrases.py 哪一个很奇怪

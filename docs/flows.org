@@ -118,8 +118,6 @@ New book might have preface, intro, end note. Children are not going to care abo
 
 Then run =python scripts/gen_book.py 安稳与独角兽= to create a template to dictate the book content.
 
-Dictate the book content to the generate json. If needed, use =python scripts/convert_dual.py 哪一个很奇怪= to populate both traditional and simplified chinese. 
+Dictate the book content to the generate json. The book is stored in a single script (declared by the =script= field in book.json, e.g. ="trad"= or ="simp"=). The app converts to the other script at runtime via opencc-js; no dual-field duplication is needed. 
 
 Then run =python scripts/segment_phrases.py 安稳与独角兽= to auto-segment each page's chars into phrases for the reading spotlight. Fix any segmentation mistakes in the Edit modal using =|= as a phrase separator.
-
-Segment phrases by =python scripts/segment_phrases.py 哪一个很奇怪=

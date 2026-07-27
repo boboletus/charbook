@@ -23,12 +23,12 @@ FREQ_CSV = """rank,char_trad,char_simp,count
 BOOK_JSON = {
     "book": "testbook",
     "base": "assets/testbook",
+    "script": "simp",
     "priority": "一不人",
-    "priority_trad": "一不人",
     "pages": [
-        {"page": 1, "chars": "我是一个人", "chars_trad": "我是一個人"},
-        {"page": 2, "chars": "这个很好", "chars_trad": "這個很好"},
-        {"page": 3, "chars": "的有的在", "chars_trad": "的有的在"},
+        {"page": 1, "chars": "我是一个人"},
+        {"page": 2, "chars": "这个很好"},
+        {"page": 3, "chars": "的有的在"},
     ],
 }
 

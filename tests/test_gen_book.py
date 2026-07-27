@@ -25,32 +25,32 @@ def test_create_new(tmp_path):
     data = run_gen_book(tmp_path)
     assert data["book"] == "testbook"
     assert data["base"] == "assets/testbook"
+    assert data["script"] == "trad"
     assert data["priority"] == ""
     assert len(data["pages"]) == 3
     assert [p["page"] for p in data["pages"]] == [1, 2, 3]
     for p in data["pages"]:
         assert p["chars"] == ""
-        assert p["chars_trad"] == ""
+        assert "chars_trad" not in p
+        assert "phrases_trad" not in p
 
 
 def test_reconcile_preserves_chars(tmp_path):
     make_page_images(tmp_path, [1, 2])
     data = run_gen_book(tmp_path)
     data["pages"][0]["chars"] = "你好"
-    data["pages"][0]["chars_trad"] = "你好"
     data["pages"][0]["phrases"] = ["你", "好"]
-    data["pages"][0]["phrases_trad"] = ["你", "好"]
     data["priority"] = "你"
-    data["priority_trad"] = "你"
+    data["script"] = "simp"
     (tmp_path / "book.json").write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n", "utf-8")
     data2 = run_gen_book(tmp_path)
     assert data2["pages"][0]["chars"] == "你好"
-    assert data2["pages"][0]["chars_trad"] == "你好"
     assert data2["pages"][0]["phrases"] == ["你", "好"]
-    assert data2["pages"][0]["phrases_trad"] == ["你", "好"]
     assert data2["priority"] == "你"
-    assert data2["priority_trad"] == "你"
+    assert data2["script"] == "simp"
+    assert "priority_trad" not in data2
+    assert "new_words_trad" not in data2
 
 
 def test_reset_wipes_chars(tmp_path):

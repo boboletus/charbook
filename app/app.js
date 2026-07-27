@@ -5,12 +5,12 @@ const LIBRARY = [
 const PRIZE_DIR = "assets/Prize";
 
 let BOOK_DIR = "";
+let BOOK_SCRIPT = "trad";
+let converter = null;
 let prizeSvgs = [];
 let PAGE_FILES = [];
 let GLOBAL_PRIORITY = "";
-let GLOBAL_PRIORITY_TRAD = "";
 let GLOBAL_NEW_WORDS = "";
-let GLOBAL_NEW_WORDS_TRAD = "";
 let charVariant = "trad";
 let pages = [];
 let currentPage = 0;
@@ -43,20 +43,30 @@ function cleanChars(s) {
   return s.replace(/\s/g, '');
 }
 
+function convertText(text) {
+  if (!converter || !text) return text;
+  return converter(text);
+}
+
+function convertArr(arr) {
+  if (!converter || !arr) return arr;
+  return arr.map(s => converter(s));
+}
+
 function getActivePriority() {
-  return charVariant === 'trad' ? GLOBAL_PRIORITY_TRAD : GLOBAL_PRIORITY;
+  return charVariant === BOOK_SCRIPT ? GLOBAL_PRIORITY : convertText(GLOBAL_PRIORITY);
 }
 
 function getActiveNewWords() {
-  return charVariant === 'trad' ? GLOBAL_NEW_WORDS_TRAD : GLOBAL_NEW_WORDS;
+  return charVariant === BOOK_SCRIPT ? GLOBAL_NEW_WORDS : convertText(GLOBAL_NEW_WORDS);
 }
 
 function getActiveChars(page) {
-  return charVariant === 'trad' ? page.chars_trad : page.chars;
+  return charVariant === BOOK_SCRIPT ? page.chars : convertText(page.chars);
 }
 
 function getActivePhrases(page) {
-  return charVariant === 'trad' ? page.phrases_trad : page.phrases;
+  return charVariant === BOOK_SCRIPT ? page.phrases : convertArr(page.phrases);
 }
 
 function getActiveLang() {
@@ -69,23 +79,40 @@ function computeCols(numChars, imgW, imgH) {
   return Math.max(1, Math.round(Math.sqrt(numChars * aspect)));
 }
 
+async function loadConverter(script) {
+  const file = script === 'trad' ? 'opencc-t2cn.js' : 'opencc-cn2t.js';
+  try {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = file;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error(`Failed to load ${file}`));
+      document.head.appendChild(s);
+    });
+    const from = script === 'trad' ? 'tw' : 'cn';
+    const to = script === 'trad' ? 'cn' : 'tw';
+    converter = OpenCC.Converter({ from, to });
+  } catch (e) {
+    console.warn('Converter load failed; variant toggle disabled:', e.message);
+    converter = null;
+  }
+}
+
 async function loadBook(jsonPath) {
   try {
     const resp = await fetch(jsonPath);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     BOOK_DIR = data.base;
+    BOOK_SCRIPT = data.script || "trad";
     GLOBAL_PRIORITY = data.priority || "";
-    GLOBAL_PRIORITY_TRAD = data.priority_trad || "";
     GLOBAL_NEW_WORDS = data.new_words || "";
-    GLOBAL_NEW_WORDS_TRAD = data.new_words_trad || "";
     PAGE_FILES = data.pages.map(p => `page${p.page}.jpg`);
     pages = data.pages.map(p => ({
       chars: cleanChars(p.chars || ""),
-      chars_trad: cleanChars(p.chars_trad || ""),
       phrases: p.phrases || [],
-      phrases_trad: p.phrases_trad || [],
     }));
+    await loadConverter(BOOK_SCRIPT);
   } catch (err) {
     dom.emptyState.hidden = false;
     dom.emptyState.querySelector('p').textContent =
@@ -511,21 +538,18 @@ function prevPage() { goToPage(currentPage - 1); }
 /* ---- Edit modal ---- */
 function openEdit() {
   const page = pages[currentPage];
-  const activeChars = getActiveChars(page);
-  const activePriority = getActivePriority();
-  const phrases = getActivePhrases(page);
-  const lang = getActiveLang();
+  const lang = BOOK_SCRIPT === 'trad' ? 'zh-TW' : 'zh-CN';
   dom.editTitle.textContent =
     `Edit Page ${currentPage + 1}`;
   dom.editImage.src =
     `${BOOK_DIR}/${PAGE_FILES[currentPage]}`;
-  dom.editText.value = activeChars;
+  dom.editText.value = page.chars;
   dom.editText.lang = lang;
-  dom.editPhrases.value = phrases.join('|');
+  dom.editPhrases.value = page.phrases.join('|');
   dom.editPhrases.lang = lang;
-  dom.editPriority.value = activePriority;
+  dom.editPriority.value = GLOBAL_PRIORITY;
   dom.editPriority.lang = lang;
-  dom.editNewWords.value = getActiveNewWords();
+  dom.editNewWords.value = GLOBAL_NEW_WORDS;
   dom.editNewWords.lang = lang;
   dom.editModal.classList.add('active');
   setTimeout(() => dom.editText.focus(), 250);
@@ -541,17 +565,10 @@ function saveEdit() {
   const newWords = cleanChars(dom.editNewWords.value);
   const phrases = dom.editPhrases.value.split('|').map(s => cleanChars(s)).filter(s => s);
   const page = pages[currentPage];
-  if (charVariant === 'trad') {
-    page.chars_trad = text;
-    page.phrases_trad = phrases;
-    GLOBAL_PRIORITY_TRAD = priority;
-    GLOBAL_NEW_WORDS_TRAD = newWords;
-  } else {
-    page.chars = text;
-    page.phrases = phrases;
-    GLOBAL_PRIORITY = priority;
-    GLOBAL_NEW_WORDS = newWords;
-  }
+  page.chars = text;
+  page.phrases = phrases;
+  GLOBAL_PRIORITY = priority;
+  GLOBAL_NEW_WORDS = newWords;
   closeEdit();
   renderCards();
 }
@@ -724,9 +741,7 @@ function resetBookState() {
   pages = [];
   BOOK_DIR = "";
   GLOBAL_PRIORITY = "";
-  GLOBAL_PRIORITY_TRAD = "";
   GLOBAL_NEW_WORDS = "";
-  GLOBAL_NEW_WORDS_TRAD = "";
   dom.reviewScreen.classList.remove('active');
   dom.emptyState.hidden = true;
   dom.emptyState.querySelector('p').innerHTML =
@@ -740,7 +755,7 @@ function selectBook(entry) {
   resetBookState();
   loadBook(entry.json).then(() => {
     if (!PAGE_FILES.length) return;
-    charVariant = 'trad';
+    charVariant = BOOK_SCRIPT;
     document.body.dataset.variant = charVariant;
     document.documentElement.lang = getActiveLang();
     document.querySelectorAll('.segmented-btn').forEach(btn => {
