@@ -1,6 +1,6 @@
 const LIBRARY = [
   { name: "安穩與獨角獸", json: "assets/安稳与独角兽/book.json", cover: "assets/安稳与独角兽/page1.jpg" },
-  { name: "哪一個很奇怪", json: "assets/哪一个很奇怪/book.json", cover: "assets/哪一个很奇怪/page5.jpg" },
+  { name: "嘿我是独角章", json: "assets/嘿我是独角章/book.json", cover: "assets/嘿我是独角章/page1.jpg" },
 ];
 const PRIZE_DIR = "assets/Prize";
 
