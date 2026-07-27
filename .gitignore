@@ -6,3 +6,5 @@ extracted/
 __pycache__/
 *.pdf
 .claude/
+scripts/tessdata/
+.agent_cache.json

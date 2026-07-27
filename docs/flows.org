@@ -1,4 +1,4 @@
-#+last_modified: 2026-07-26 22:50:00
+#+last_modified: 2026-07-26 23:49:19
 
 * User flow
 :PROPERTIES:
@@ -111,6 +111,9 @@ Work on a branch if the user requests it. Squash-merge to ~main~ after all steps
 Tell the user what you did. Tell them what you verified. Mention any issues or trade-offs. Keep it short.
 
 * New book flow
+:PROPERTIES:
+:ID:       e8c0d2ae-e244-4aa9-825f-6a761fd5d621
+:END:
 
 Use =python scripts/extract_pdf.py --name 安稳与独角兽 "/home/yizhe/Src/charbook/安稳与独角兽.pdf"= to extract all pages of a new book it a folder.
 
@@ -121,3 +124,21 @@ Then run =python scripts/gen_book.py 安稳与独角兽= to create a template to
 Dictate the book content to the generate json. The book is stored in a single script (declared by the =script= field in book.json, e.g. ="trad"= or ="simp"=). The app converts to the other script at runtime via opencc-js; no dual-field duplication is needed. 
 
 Then run =python scripts/segment_phrases.py 安稳与独角兽= to auto-segment each page's chars into phrases for the reading spotlight. Fix any segmentation mistakes in the Edit modal using =|= as a phrase separator.
+
+Then run =python scripts/recommend_words.py 哪一个很奇怪 --all=
+
+** Agent-driven pipeline
+
+Use =python scripts/agent_book.py 嘿我是独角章 "嘿我是独角章.pdf"= to run the full pipeline as an LLM agent loop via Lisette. The agent (an LLM with tool-calling) drives every decision:
+
+1. *Extract* PDF pages to JPGs.
+2. *Classify* the first/last few pages using a vision model to identify non-story content (copyright, ISBN, author intro, blank, end notes). Remove them, keeping the title page + story pages.
+3. *Tiered OCR* per page:
+   - Tier 1: PDF text extraction (instant, perfect if the PDF has a text layer).
+   - Tier 2: Tesseract OCR (local, fast, moderate accuracy).
+   - Tier 3: Vision model OCR (API call, highest accuracy).
+   Escalates automatically when a tier returns fewer than 5 CJK characters. A probe on the first page detects if tesseract is worth trying — if not, skips straight to the vision model for all pages.
+4. *Review* OCR results, re-OCR poor pages with the vision model.
+5. *Segment* phrases, *recommend* priority words, and *set* metadata (script, priority, new_words).
+
+Requires =FIREWORKS_API_KEY= (or other provider key) and Chinese tesseract traineddata in =scripts/tessdata/=. Use =--agent-model= and =--vision-model= to override the LLM models.

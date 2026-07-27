@@ -31,8 +31,10 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
 - `scripts/recommend_words.py` — recommend high-frequency characters to add to priority list (reads `scripts/freq_table.csv` and `app/assets/fluency.txt`).
 - `scripts/segment_phrases.py` — auto-segment each page's `chars` into phrases using jieba, stored as `phrases` array per page in `book.json`.
 - `scripts/gen_prize.py` — generate `app/assets/Prize/prize.json` manifest listing every unicorn `*.svg` so the static app can pick one at random.
+- `scripts/agent_book.py` — agent-driven book processing pipeline using Lisette. Runs an LLM agent loop that orchestrates: PDF extraction, non-story page classification/removal (using a vision model), tiered OCR (PDF text → tesseract → vision model), phrase segmentation, and word recommendation. The agent (an LLM with tool-calling) drives every decision via Lisette's `Chat` class. Requires `FIREWORKS_API_KEY` (or other provider key) and Chinese tesseract traineddata in `scripts/tessdata/`.
+- `scripts/tessdata/` — Chinese tesseract language data (`chi_sim.traineddata`, `chi_tra.traineddata`), gitignored. Download with: `curl -sL "https://github.com/tesseract-ocr/tessdata/raw/main/chi_sim.traineddata" -o scripts/tessdata/chi_sim.traineddata` (and `chi_tra`).
 - `docs/flows.org` — human-facing org-mode notes: the user flow and this development workflow. Update the user flow there when a feature changes user-facing behavior.
-- `tests/` — pytest smoke tests for `gen_book.py`, `gen_prize.py`, `recommend_words.py`, and `segment_phrases.py`.
+- `tests/` — pytest smoke tests for `gen_book.py`, `gen_prize.py`, `recommend_words.py`, `segment_phrases.py`, and `agent_book.py`.
 
 ## book.json format
 
@@ -77,6 +79,11 @@ python scripts/segment_phrases.py 哪一个很奇怪
 # Recommend high-frequency characters to add to priority
 python scripts/recommend_words.py 哪一个很奇怪
 # Use --top N to change count, --all to see all candidates, --fluency-file to override the known-chars list
+
+# Agent-driven pipeline (requires FIREWORKS_API_KEY):
+python scripts/agent_book.py 哪一个很奇怪 "book.pdf"
+# Use --agent-model and --vision-model to override the LLM models
+# Use --force to overwrite existing page images
 ```
 
 Run tests:
@@ -85,7 +92,7 @@ Run tests:
 pytest tests/ -v
 ```
 
-Dependencies: `pymupdf`, `pillow`, `fastcore`, `opencc-python-reimplemented`, `jieba`, `pytest` (installed in `.venv`; see `requirements.txt`).
+Dependencies: `pymupdf`, `pillow`, `fastcore`, `opencc-python-reimplemented`, `jieba`, `pytest`, `lisette`, `pytesseract` (installed in `.venv`; see `requirements.txt`). Install with `uv pip install -r requirements.txt`. Tesseract Chinese traineddata (`scripts/tessdata/`) is gitignored — download separately.
 
 ## Key design constraints
 
@@ -180,3 +187,4 @@ GitHub Actions deploys `app/` to GitHub Pages on push to `main` (`.github/workfl
 - `book.json` lives inside the book's asset directory (`app/assets/<name>/book.json`), not at the app root.
 - The available books are defined on line 1 of `app/app.js` as a `LIBRARY` array. The app shows a library screen on load and the user picks a book at runtime. Adding a book means adding an entry to the `LIBRARY` array (a code edit, not a user action).
 - `app/assets/Prize/` contains shared reward assets: the unicorn SVG collection (all `*.svg` are used, picked randomly) and the generated `prize.json` manifest. Run `scripts/gen_prize.py` after adding or removing SVGs.
+- `scripts/tessdata/` is gitignored. Download Chinese traineddata with: `curl -sL "https://github.com/tesseract-ocr/tessdata/raw/main/chi_sim.traineddata" -o scripts/tessdata/chi_sim.traineddata` (and `chi_tra`).
