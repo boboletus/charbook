@@ -97,12 +97,16 @@ def gen_book(
                 "page": n,
                 "chars": e.get("chars", ""),
                 "chars_trad": e.get("chars_trad", ""),
+                "phrases": e.get("phrases", []),
+                "phrases_trad": e.get("phrases_trad", []),
             })
         else:
             page_entries.append({
                 "page": n,
                 "chars": "",
                 "chars_trad": "",
+                "phrases": [],
+                "phrases_trad": [],
             })
 
     manifest = {"book": name, "base": url_base, "priority": old_priority, "priority_trad": old_priority_trad, "new_words": old_new_words, "new_words_trad": old_new_words_trad, "pages": page_entries}

@@ -1,4 +1,4 @@
-#+last_modified: 2026-07-26 14:48:37
+#+last_modified: 2026-07-26 21:31:43
 
 * User flow
 :PROPERTIES:
@@ -24,6 +24,14 @@ The child finds all priority cards on the page. The rest auto-reveal. All cards 
 The child returns to a completed page. The illustration shows directly. No cards appear. Reset brings the cards back.
 
 "Reveal All" skips the priority requirement. It reveals every card on any page.
+
+** Reading Spotlight
+
+While reading, the parent uses the keyboard to guide the child phrase by phrase. Pressing ↓ (Arrow Down) moves a gentle highlight to the next phrase in reading order (right-to-left, top-to-bottom); ↑ (Arrow Up) moves to the previous phrase. The first ↓ from a fresh page lights the first phrase; at either end the highlight clamps in place (no wrap). The highlight is a small accent-colored dot in the top-right corner of every card in the current phrase — present enough to spot, gentle enough not to distract. It shows on both face-up and revealed cards. The highlight clears on page change, 繁/簡 toggle, Reset, and when the page completes and all cards fade out. ←/→ still flip pages; ↑/↓ are reserved for phrase-by-phrase guidance. It is disabled while the review screen or edit modal is open.
+
+Pressing Space reveals all cards in the currently spotlit phrase (fades their backgrounds to show the illustration, same as tapping each) and auto-advances the spotlight to the next phrase so the parent can continue reading without switching keys. If all cards in the phrase are already revealed, Space just advances. If no spotlight is active, Space does nothing — press ↓ first to start guiding. Space is disabled while the review screen or edit modal is open.
+
+Phrases are auto-segmented by a Python script (~segment_phrases.py~) using jieba word segmentation and stored per-page in ~book.json~ as a =phrases= array. Parents can fix segmentation mistakes in the Edit modal using =|= as a phrase separator (e.g. =安稳|与|独角兽=). When a page has no phrases, each character is its own phrase (character-by-character fallback).
 
 * Development flow
 
@@ -107,3 +115,7 @@ New book might have preface, intro, end note. Children are not going to care abo
 Then run =python scripts/gen_book.py 安稳与独角兽= to create a template to dictate the book content.
 
 Dictate the book content to the generate json. If needed, use =python scripts/convert_dual.py 哪一个很奇怪= to populate both traditional and simplified chinese. 
+
+Then run =python scripts/segment_phrases.py 安稳与独角兽= to auto-segment each page's chars into phrases for the reading spotlight. Fix any segmentation mistakes in the Edit modal using =|= as a phrase separator.
+
+Segment phrases by =python scripts/segment_phrases.py 哪一个很奇怪=

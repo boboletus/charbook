@@ -38,6 +38,8 @@ def test_reconcile_preserves_chars(tmp_path):
     data = run_gen_book(tmp_path)
     data["pages"][0]["chars"] = "你好"
     data["pages"][0]["chars_trad"] = "你好"
+    data["pages"][0]["phrases"] = ["你", "好"]
+    data["pages"][0]["phrases_trad"] = ["你", "好"]
     data["priority"] = "你"
     data["priority_trad"] = "你"
     (tmp_path / "book.json").write_text(
@@ -45,6 +47,8 @@ def test_reconcile_preserves_chars(tmp_path):
     data2 = run_gen_book(tmp_path)
     assert data2["pages"][0]["chars"] == "你好"
     assert data2["pages"][0]["chars_trad"] == "你好"
+    assert data2["pages"][0]["phrases"] == ["你", "好"]
+    assert data2["pages"][0]["phrases_trad"] == ["你", "好"]
     assert data2["priority"] == "你"
     assert data2["priority_trad"] == "你"
 

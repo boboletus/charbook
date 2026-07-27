@@ -51,7 +51,7 @@ def convert_dual(
     elif not data.get("new_words_trad"):
         data["new_words_trad"] = ""
 
-    # Per-page chars
+    # Per-page chars and phrases
     converted = 0
     skipped = 0
     for entry in data.get("pages", []):
@@ -64,6 +64,13 @@ def convert_dual(
             entry["chars_trad"] = ""
         else:
             skipped += 1
+
+        # Phrases: convert simplified phrases to traditional
+        simp_phrases = entry.get("phrases", [])
+        if simp_phrases and (reset_trad or not entry.get("phrases_trad")):
+            entry["phrases_trad"] = [cc.convert(p) for p in simp_phrases]
+        elif not entry.get("phrases_trad"):
+            entry["phrases_trad"] = []
 
     manifest_path.write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

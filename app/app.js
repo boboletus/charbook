@@ -20,6 +20,7 @@ let priorityTotal = 0;
 let autoRevealing = false;
 let completedPages = new Set();
 let spotlightIndex = -1;
+let phraseGroups = [];
 
 let reviewActive = false;
 let reviewChars = [];
@@ -27,11 +28,11 @@ let reviewedIndices = new Set();
 
 const dom = {};
 function initDomCache() {
- ['cardsOverlay','emptyState','pageWrapper','bookPage','priorityText',
-   'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
-   'editPriority','editNewWords','editModal','reviewScreen','reviewGrid','reviewTitle',
-   'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
-   'editBtn','editCancel','editSave','pageReminder'].forEach(id => dom[id] = document.getElementById(id));
+  ['cardsOverlay','emptyState','pageWrapper','bookPage','priorityText',
+    'pageIndicator','prevBtn','nextBtn','editTitle','editImage','editText',
+    'editPhrases','editPriority','editNewWords','editModal','reviewScreen','reviewGrid','reviewTitle',
+    'reviewProgress','startReadingBtn','reviewBtn','resetBtn','revealBtn',
+    'editBtn','editCancel','editSave','pageReminder'].forEach(id => dom[id] = document.getElementById(id));
 }
 
 function cleanChars(s) {
@@ -48,6 +49,10 @@ function getActiveNewWords() {
 
 function getActiveChars(page) {
   return charVariant === 'trad' ? page.chars_trad : page.chars;
+}
+
+function getActivePhrases(page) {
+  return charVariant === 'trad' ? page.phrases_trad : page.phrases;
 }
 
 function getActiveLang() {
@@ -74,6 +79,8 @@ async function loadBook() {
     pages = data.pages.map(p => ({
       chars: cleanChars(p.chars || ""),
       chars_trad: cleanChars(p.chars_trad || ""),
+      phrases: p.phrases || [],
+      phrases_trad: p.phrases_trad || [],
     }));
   } catch (err) {
     dom.emptyState.hidden = false;
@@ -132,6 +139,7 @@ function renderCards() {
   revealedCount = 0;
   priorityRevealed = 0;
   spotlightIndex = -1;
+  phraseGroups = [];
   renderReminder();
 
   const page = pages[currentPage];
@@ -199,6 +207,7 @@ function renderCards() {
     cards.push(wrapper);
   });
 
+  buildPhraseGroups(page);
   updateProgress();
 }
 
@@ -415,39 +424,69 @@ function resetAll() {
   updateProgress();
 }
 
-/* ---- Reading spotlight (keyboard word guide) ---- */
+/* ---- Reading spotlight (keyboard phrase guide) ---- */
+function buildPhraseGroups(page) {
+  const phrases = getActivePhrases(page);
+  const activeChars = getActiveChars(page);
+  if (!phrases.length || !activeChars || !cardData.length) {
+    phraseGroups = cardData.map(d => [d.index]);
+    return;
+  }
+  const groups = [];
+  let idx = 0;
+  for (const phrase of phrases) {
+    const len = [...phrase].length;
+    const group = [];
+    for (let j = 0; j < len && idx < cardData.length; j++, idx++) {
+      group.push(cardData[idx].index);
+    }
+    if (group.length) groups.push(group);
+  }
+  while (idx < cardData.length) {
+    groups.push([cardData[idx].index]);
+    idx++;
+  }
+  phraseGroups = groups;
+}
+
 function clearSpotlight() {
-  if (spotlightIndex >= 0 && cardData[spotlightIndex]) {
-    cardData[spotlightIndex].wrapper.classList.remove('spotlight');
+  if (spotlightIndex >= 0 && phraseGroups[spotlightIndex]) {
+    for (const ci of phraseGroups[spotlightIndex]) {
+      if (cardData[ci]) cardData[ci].wrapper.classList.remove('spotlight');
+    }
   }
   spotlightIndex = -1;
 }
 
 function setSpotlight(index) {
   clearSpotlight();
-  if (index < 0 || index >= cardData.length) return;
+  if (index < 0 || index >= phraseGroups.length) return;
   spotlightIndex = index;
-  cardData[index].wrapper.classList.add('spotlight');
+  for (const ci of phraseGroups[index]) {
+    if (cardData[ci]) cardData[ci].wrapper.classList.add('spotlight');
+  }
 }
 
 function advanceSpotlight(dir) {
-  if (!cardData.length || reviewActive) return;
+  if (!phraseGroups.length || reviewActive) return;
   let next;
   if (spotlightIndex < 0) {
-    next = dir > 0 ? 0 : cardData.length - 1;
+    next = dir > 0 ? 0 : phraseGroups.length - 1;
   } else {
-    next = Math.min(cardData.length - 1, Math.max(0, spotlightIndex + dir));
+    next = Math.min(phraseGroups.length - 1, Math.max(0, spotlightIndex + dir));
   }
   setSpotlight(next);
 }
 
 function revealSpotlight() {
-  if (spotlightIndex < 0 || !cardData[spotlightIndex] || reviewActive) return;
-  const data = cardData[spotlightIndex];
-  if (!data.wrapper.classList.contains('revealed')) {
-    toggleCard(data);
+  if (spotlightIndex < 0 || !phraseGroups[spotlightIndex] || reviewActive) return;
+  const group = phraseGroups[spotlightIndex];
+  for (const ci of group) {
+    if (cardData[ci] && !cardData[ci].wrapper.classList.contains('revealed')) {
+      toggleCard(cardData[ci]);
+    }
   }
-  if (!autoRevealing && spotlightIndex < cardData.length - 1) {
+  if (!autoRevealing && spotlightIndex < phraseGroups.length - 1) {
     setSpotlight(spotlightIndex + 1);
   }
 }
@@ -470,6 +509,7 @@ function openEdit() {
   const page = pages[currentPage];
   const activeChars = getActiveChars(page);
   const activePriority = getActivePriority();
+  const phrases = getActivePhrases(page);
   const lang = getActiveLang();
   dom.editTitle.textContent =
     `Edit Page ${currentPage + 1}`;
@@ -477,6 +517,8 @@ function openEdit() {
     `${BOOK_DIR}/${PAGE_FILES[currentPage]}`;
   dom.editText.value = activeChars;
   dom.editText.lang = lang;
+  dom.editPhrases.value = phrases.join('|');
+  dom.editPhrases.lang = lang;
   dom.editPriority.value = activePriority;
   dom.editPriority.lang = lang;
   dom.editNewWords.value = getActiveNewWords();
@@ -493,13 +535,16 @@ function saveEdit() {
   const text = cleanChars(dom.editText.value);
   const priority = cleanChars(dom.editPriority.value);
   const newWords = cleanChars(dom.editNewWords.value);
+  const phrases = dom.editPhrases.value.split('|').map(s => cleanChars(s)).filter(s => s);
   const page = pages[currentPage];
   if (charVariant === 'trad') {
     page.chars_trad = text;
+    page.phrases_trad = phrases;
     GLOBAL_PRIORITY_TRAD = priority;
     GLOBAL_NEW_WORDS_TRAD = newWords;
   } else {
     page.chars = text;
+    page.phrases = phrases;
     GLOBAL_PRIORITY = priority;
     GLOBAL_NEW_WORDS = newWords;
   }

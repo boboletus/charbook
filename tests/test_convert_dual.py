@@ -60,3 +60,33 @@ def test_empty_chars_stay_empty(tmp_path):
     data = run_convert_dual(tmp_path)
     assert data["pages"][0]["chars_trad"] == ""
     assert data["pages"][1]["chars_trad"] == "哪一個"
+
+
+def test_converts_phrases_trad(tmp_path):
+    make_book_json(tmp_path, [(1, "独角兽妹妹")])
+    data = run_convert_dual(tmp_path)
+    # No phrases in input -> empty phrases_trad
+    assert data["pages"][0]["phrases_trad"] == []
+
+
+def test_converts_phrases_trad_with_data(tmp_path):
+    data = make_book_json(tmp_path, [(1, "独角兽妹妹")])
+    data["pages"][0]["phrases"] = ["独角兽", "妹妹"]
+    (tmp_path / "book.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    data2 = run_convert_dual(tmp_path)
+    assert data2["pages"][0]["phrases_trad"] == ["獨角獸", "妹妹"]
+
+
+def test_reset_trad_reconverts_phrases(tmp_path):
+    data = make_book_json(tmp_path, [(1, "独角兽妹妹")])
+    data["pages"][0]["phrases"] = ["独角兽", "妹妹"]
+    (tmp_path / "book.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    data2 = run_convert_dual(tmp_path)
+    assert data2["pages"][0]["phrases_trad"] == ["獨角獸", "妹妹"]
+    data2["pages"][0]["phrases_trad"] = ["WRONG"]
+    (tmp_path / "book.json").write_text(
+        json.dumps(data2, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    data3 = run_convert_dual(tmp_path, extra_args=["--reset_trad"])
+    assert data3["pages"][0]["phrases_trad"] == ["獨角獸", "妹妹"]

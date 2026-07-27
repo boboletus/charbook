@@ -1,4 +1,5 @@
 fastcore
+jieba
 opencc-python-reimplemented
 pillow
 pymupdf

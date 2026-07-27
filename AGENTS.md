@@ -28,9 +28,10 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
 - `scripts/gen_book.py` — generate/sync `book.json` from page images.
 - `scripts/convert_dual.py` — convert book.json to dual simplified+traditional format (adds `chars_trad`/`priority_trad`/`new_words_trad` via OpenCC `s2tw`).
 - `scripts/recommend_words.py` — recommend high-frequency characters to add to priority list (reads `scripts/freq_table.csv` and `app/assets/fluency.txt`).
+- `scripts/segment_phrases.py` — auto-segment each page's `chars` into phrases using jieba, stored as `phrases` array per page in `book.json`.
 - `scripts/gen_prize.py` — generate `app/assets/Prize/prize.json` manifest listing every unicorn `*.svg` so the static app can pick one at random.
 - `docs/flows.org` — human-facing org-mode notes: the user flow and this development workflow. Update the user flow there when a feature changes user-facing behavior.
-- `tests/` — pytest smoke tests for `gen_book.py`, `gen_prize.py`, `convert_dual.py`, and `recommend_words.py`.
+- `tests/` — pytest smoke tests for `gen_book.py`, `gen_prize.py`, `convert_dual.py`, `recommend_words.py`, and `segment_phrases.py`.
 
 ## book.json format
 
@@ -43,7 +44,7 @@ A server is required — the app uses `fetch()` to load `book.json`, which won't
   "new_words": "奇怪",
   "new_words_trad": "奇怪",
   "pages": [
-    { "page": 5, "chars": "哪一个很奇怪", "chars_trad": "哪一個很奇怪" }
+    { "page": 5, "chars": "哪一个很奇怪", "chars_trad": "哪一個很奇怪", "phrases": ["哪", "一个", "很", "奇怪"], "phrases_trad": ["哪", "一個", "很", "奇怪"] }
   ]
 }
 ```
@@ -73,6 +74,10 @@ python scripts/gen_book.py 哪一个很奇怪
 python scripts/convert_dual.py 哪一个很奇怪
 # Use --reset-trad to re-convert all traditional fields from simplified
 
+# Auto-segment each page's chars into phrases
+python scripts/segment_phrases.py 哪一个很奇怪
+# Use --reset to re-segment all pages (overwrites manual edits)
+
 # Recommend high-frequency characters to add to priority
 python scripts/recommend_words.py 哪一个很奇怪
 # Use --top N to change count, --all to see all candidates, --fluency-file to override the known-chars list
@@ -84,7 +89,7 @@ Run tests:
 pytest tests/ -v
 ```
 
-Dependencies: `pymupdf`, `pillow`, `fastcore`, `opencc-python-reimplemented`, `pytest` (installed in `.venv`; see `requirements.txt`).
+Dependencies: `pymupdf`, `pillow`, `fastcore`, `opencc-python-reimplemented`, `jieba`, `pytest` (installed in `.venv`; see `requirements.txt`).
 
 ## Key design constraints
 
@@ -94,7 +99,7 @@ Dependencies: `pymupdf`, `pillow`, `fastcore`, `opencc-python-reimplemented`, `p
 - "Reveal All" button works on any page (including pages with no priority chars).
 - Toolbar shows priority counter only (e.g. `1 / 5`), not total progress.
 - Edit modal shows the page image alongside the form so the parent can read while typing.
-- Keyboard: ←/→ arrows navigate pages when the modal is closed; ↑/↓ arrows move a gentle reading spotlight through the page's characters in reading order (right-to-left, top-to-bottom), clamping at the ends; `Space` reveals the spotlit card and advances the spotlight to the next character; `T` toggles 繁/簡; `R` reveals all; `Ctrl/Cmd+Enter` saves the edit modal; `Escape` closes the modal or exits review. The spotlight is disabled while the review screen or edit modal is open.
+- Keyboard: ←/→ arrows navigate pages when the modal is closed; ↑/↓ arrows move a gentle reading spotlight through the page's phrases in reading order (right-to-left, top-to-bottom), clamping at the ends; `Space` reveals the spotlit phrase's cards and advances the spotlight to the next phrase; `T` toggles 繁/簡; `R` reveals all; `Ctrl/Cmd+Enter` saves the edit modal; `Escape` closes the modal or exits review. The spotlight is disabled while the review screen or edit modal is open.
 - Priority review screen: on first load, if priority characters exist, a full-screen review overlay shows each unique priority character as a large flashcard. Tapping a card pops it and marks it reviewed (accent ring). When all are reviewed, the "Start Reading" button becomes primary. The "Review" toolbar button re-opens it at any time.
 - New word cards trigger a unicorn icon (a random SVG from `assets/Prize/` via `prize.json`) in a random bright OKLCH color theme, with one of 5 random CSS animations on tap. Monochrome (`currentColor`) SVGs adopt the theme color; multi-color SVGs keep their colors with a themed glow. No visual hint before tap. Reduced-motion skips the animation. Falls back to 🦄 emoji if every SVG fails to load.
 - CSS uses `transform` shorthand (not individual `scale`/`translate`/`rotate` properties) for Firefox Android compatibility.
