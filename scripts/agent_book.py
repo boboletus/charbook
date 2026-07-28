@@ -12,10 +12,10 @@ remove, whether OCR results are good enough, what priority/new_words to set.
 Lisette's Chat class handles the tool-calling loop automatically.
 
 Usage:
-    .venv/bin/python scripts/agent_book.py "嘿我是独角章" "嘿我是独角章.pdf"
+    .venv/bin/python scripts/agent_book.py "嘿我是独角章" --pdf "嘿我是独角章.pdf"
 
     # With explicit models:
-    .venv/bin/python scripts/agent_book.py "嘿我是独角章" "嘿我是独角章.pdf" \\
+    .venv/bin/python scripts/agent_book.py "嘿我是独角章" --pdf "嘿我是独角章.pdf" \\
         --agent-model fireworks_ai/accounts/fireworks/models/kimi-k2p6 \\
         --vision-model fireworks_ai/accounts/fireworks/models/qwen2p5-vl-72b-instruct
 
@@ -36,6 +36,8 @@ import json
 import os
 import re
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 # Ensure scripts/ is importable (for segment_phrases, recommend_words modules)
@@ -57,6 +59,7 @@ class CostTracker:
         self.calls = []
         self.total_cost = 0.0
         self.total_tokens = 0
+        self._lock = threading.Lock()
 
     def add(self, model: str, usage, cost: float):
         prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
@@ -68,9 +71,10 @@ class CostTracker:
             "total_tokens": prompt_tokens + completion_tokens,
             "cost": cost,
         }
-        self.calls.append(entry)
-        self.total_cost += cost
-        self.total_tokens += entry["total_tokens"]
+        with self._lock:
+            self.calls.append(entry)
+            self.total_cost += cost
+            self.total_tokens += entry["total_tokens"]
 
     def summary(self) -> str:
         if not self.calls:
@@ -154,10 +158,12 @@ If book.json already exists, this preserves existing data.
 This probes page 1 (almost always the title), then skips ahead 3 pages at a time \
 until it finds story content, then back-validates the boundary. It returns the \
 list of non-story page numbers to remove. Classification results are cached.
-4. CHECK END: Call classify_pages on the last 3-4 pages to find end notes, \
-blank pages, or back cover. Remove any non-story pages found.
-5. REMOVE: Call remove_pages with the non-story page numbers. This deletes \
-both the page images AND their entries from book.json.
+4. CHECK END: Call check_end_pages to find and remove end notes, blank pages, \
+or back covers at the end of the book. This classifies the last few pages, \
+removes any non-story ones, and re-checks until the last page is story. \
+Cached — skipped on re-runs.
+5. REMOVE: Call remove_pages with the front non-story page numbers from step 3. \
+This deletes both the page images AND their entries from book.json.
 6. OCR: Call ocr_all_pages to run tiered OCR on all remaining pages. This tries \
 PDF text extraction first, then tesseract, then a vision model. Set \
 skip_tesseract=True if tesseract is producing poor results (common for picture \
@@ -636,6 +642,94 @@ def find_story_start(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
+def check_end_pages(
+    book_name: str,  # Book name
+) -> str:
+    """Check the last few pages for non-story content and remove if found.
+
+    Classifies the last 3-4 remaining pages to find end notes, blank pages,
+    or back covers. Removes any non-story pages, then re-checks the new last
+    pages (handles cascading end matter). Cached — on re-runs this is a no-op.
+    """
+    cache = _read_cache(book_name)
+    if cache.get("end_checked"):
+        removed = cache.get("end_removed", [])
+        nums = _list_page_nums(book_name)
+        last_pages = nums[-4:] if len(nums) >= 4 else nums
+        if removed:
+            return (
+                f"End pages already checked (cached). "
+                f"Previously removed {len(removed)} page(s): {removed}. "
+                f"Current last pages: {last_pages}. No further action needed."
+            )
+        return (
+            f"End pages already checked (cached). "
+            f"No non-story pages found at end. "
+            f"Last pages: {last_pages}. No further action needed."
+        )
+
+    nums = _list_page_nums(book_name)
+    if not nums:
+        return f"No page images found for book '{book_name}'."
+
+    cached_cls = cache.setdefault("classifications", {})
+    total_removed = []
+
+    def classify(n):
+        key = str(n)
+        if key in cached_cls:
+            cls = cached_cls[key].get("classification", "story")
+            print(f"  classify page {n}: {cls} (cached)", file=sys.stderr)
+            return cls
+        r = _classify_with_vision(book_name, n)
+        cls = r.get("classification", "story")
+        cached_cls[key] = r
+        print(f"  classify page {n}: {cls} — {r.get('reason', '')[:60]}",
+              file=sys.stderr)
+        return cls
+
+    # Loop: check last 3-4 pages, remove non-story ones, repeat until
+    # the last page is a story page (handles cascading end matter).
+    check_count = 0
+    while nums:
+        check_count = min(4, len(nums))
+        to_check = nums[-check_count:]
+        non_story = [n for n in to_check if classify(n) == "non-story"]
+        if not non_story:
+            break
+        for n in non_story:
+            p = _page_path(book_name, n)
+            if p.exists():
+                p.unlink()
+        data = _read_book_json(book_name)
+        if data:
+            data["pages"] = [
+                p for p in data.get("pages", []) if p["page"] not in non_story
+            ]
+            _write_book_json(book_name, data)
+        total_removed.extend(non_story)
+        print(f"  Removed non-story end page(s): {non_story}", file=sys.stderr)
+        nums = _list_page_nums(book_name)
+
+    _write_cache(book_name, cache)
+    cache = _read_cache(book_name)
+    cache["end_checked"] = True
+    cache["end_removed"] = total_removed
+    cache.setdefault("removed_pages", []).extend(total_removed)
+    _write_cache(book_name, cache)
+
+    last_pages = nums[-4:] if len(nums) >= 4 else nums
+    if total_removed:
+        return (
+            f"End pages checked: removed {len(total_removed)} non-story "
+            f"page(s): {total_removed}. Remaining last pages: {last_pages}."
+        )
+    return (
+        f"End pages checked: all last {check_count} page(s) are story, "
+        f"none removed. Last pages: {last_pages}."
+    )
+
+
 def remove_pages(
     book_name: str,   # Book name
     page_nums: str,   # Comma-separated page numbers to remove
@@ -757,8 +851,10 @@ def ocr_all_pages(
                   f"({_cjk_count(probe_ts)} CJK chars, garbage={_is_tesseract_garbage(probe_ts)}) "
                   f"on page {pages_to_ocr[0]}, skipping tesseract for all pages", file=sys.stderr)
 
-    results = []
-    combined_chars = ""
+    # Phase 1: Run local tiers (1=PDF text, 2=tesseract) for all pages.
+    # Collect pages that need tier 3 (vision model) for concurrent batch.
+    results = {}  # page_num -> {"page", "tier", "chars", "cjk_count"}
+    needs_vision = []
     for n in pages_to_ocr:
         text = _tier1_pdf_text(pdf_path, n)
         tier = 1
@@ -767,48 +863,73 @@ def ocr_all_pages(
                 text = _tier2_tesseract(book_name, n)
                 tier = 2
             if skip_tesseract or _cjk_count(text) < 5 or _is_tesseract_garbage(text):
-                try:
-                    text = _tier3_model_ocr(book_name, n)
-                except Exception as e:
-                    text = ""
-                    print(f"  page {n}: tier 3 error: {e}", file=sys.stderr)
-                tier = 3
+                needs_vision.append(n)
+                continue
         text = text.strip()
-        combined_chars += text
-        results.append({"page": n, "tier": tier, "chars": text, "cjk_count": _cjk_count(text)})
+        results[n] = {"page": n, "tier": tier, "chars": text, "cjk_count": _cjk_count(text)}
         print(f"  OCR page {n}: tier {tier}, {_cjk_count(text)} CJK chars", file=sys.stderr)
 
-    # Update book.json — preserve cached pages, add/update OCR'd pages
-    pages = []
-    for n in nums:
-        entry = existing.get(n, {})
-        entry["page"] = n
-        if n in [r["page"] for r in results]:
-            r = next(r for r in results if r["page"] == n)
-            entry["chars"] = r["chars"]
-        if "phrases" not in entry:
-            entry["phrases"] = []
-        pages.append(entry)
-    data["pages"] = pages
-    data["book"] = book_name
-    data["base"] = f"assets/{book_name}"
+    def _sync_book_json(results_map):
+        """Rebuild and write book.json from cached + OCR'd results.
+        Also persist ocr_done to cache so progress survives interruption."""
+        pages = []
+        for n in nums:
+            entry = existing.get(n, {})
+            entry["page"] = n
+            if n in results_map:
+                entry["chars"] = results_map[n]["chars"]
+            if "phrases" not in entry:
+                entry["phrases"] = []
+            pages.append(entry)
+        data["pages"] = pages
+        data["book"] = book_name
+        data["base"] = f"assets/{book_name}"
+        all_chars = "".join(p.get("chars", "") for p in pages)
+        if not data.get("script") or data["script"] == "trad":
+            data["script"] = _detect_script(all_chars)
+        _write_book_json(book_name, data)
+        # Persist ocr_done so the cache reflects actual progress
+        cache = _read_cache(book_name)
+        ocr_done = set(cache.get("ocr_done", []))
+        ocr_done.update(results_map.keys())
+        cache["ocr_done"] = sorted(ocr_done)
+        _write_cache(book_name, cache)
 
-    # Detect script from all chars (cached + new)
-    all_chars = "".join(p.get("chars", "") for p in pages)
-    if not data.get("script") or data["script"] == "trad":
-        data["script"] = _detect_script(all_chars)
-    _write_book_json(book_name, data)
+    # Phase 2: Run tier 3 (vision model) concurrently, writing book.json
+    # incrementally so progress is saved if the run is interrupted.
+    if needs_vision:
+        max_workers = min(8, len(needs_vision))
+        print(f"  Tier 3 (vision): {len(needs_vision)} pages, "
+              f"{max_workers} concurrent workers", file=sys.stderr)
 
-    # Update cache
-    cache = _read_cache(book_name)
-    ocr_done = set(cache.get("ocr_done", []))
-    ocr_done.update(r["page"] for r in results)
-    cache["ocr_done"] = sorted(ocr_done)
-    _write_cache(book_name, cache)
+        def _do_vision(n):
+            try:
+                text = _tier3_model_ocr(book_name, n)
+                return n, text, None
+            except Exception as e:
+                return n, "", str(e)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_do_vision, n): n for n in needs_vision}
+            for future in as_completed(futures):
+                n, text, err = future.result()
+                if err:
+                    print(f"  page {n}: tier 3 error: {err}", file=sys.stderr)
+                text = text.strip()
+                results[n] = {"page": n, "tier": 3, "chars": text,
+                              "cjk_count": _cjk_count(text)}
+                print(f"  OCR page {n}: tier 3, {_cjk_count(text)} CJK chars",
+                      file=sys.stderr)
+                _sync_book_json(results)
+
+    # Final write (covers the case where no vision was needed, or ensures
+    # the last state is flushed even if incremental writes already did it).
+    # Also covers local-tier (1/2) results that weren't written incrementally.
+    _sync_book_json(results)
 
     tier_counts = {1: 0, 2: 0, 3: 0}
     empty_pages = []
-    for r in results:
+    for r in results.values():
         tier_counts[r["tier"]] = tier_counts.get(r["tier"], 0) + 1
         if r["cjk_count"] == 0:
             empty_pages.append(r["page"])
@@ -820,7 +941,7 @@ def ocr_all_pages(
         f"  Tier 3 (vision model): {tier_counts.get(3, 0)} pages\n"
         f"  Empty results: {empty_pages if empty_pages else 'none'}\n"
         f"  Detected script: {data['script']}\n"
-        f"  book.json: {len(pages)} total pages"
+        f"  book.json: {len(data['pages'])} total pages"
     )
     return summary
 
@@ -978,6 +1099,7 @@ ALL_TOOLS = [
     extract_pdf_pages,
     gen_book,
     find_story_start,
+    check_end_pages,
     classify_pages,
     remove_pages,
     list_pages,
@@ -1019,31 +1141,43 @@ def run_agent(book_name: str, pdf_path: str, agent_model: str,
     print(f"Max steps: {max_steps}", file=sys.stderr)
     print("---", file=sys.stderr)
 
-    res = chat(user_msg, max_steps=max_steps)
-    agent_text = contents(res).content
+    def _save_cost():
+        """Persist cost data to cache (called even on crash/kill)."""
+        cache = _read_cache(book_name)
+        cache["cost"] = {
+            "total": round(COST_TRACKER.total_cost, 6),
+            "tokens": COST_TRACKER.total_tokens,
+            "calls": len(COST_TRACKER.calls),
+            "by_model": {},
+        }
+        for c in COST_TRACKER.calls:
+            m = c["model"]
+            if m not in cache["cost"]["by_model"]:
+                cache["cost"]["by_model"][m] = {"calls": 0, "tokens": 0, "cost": 0.0}
+            cache["cost"]["by_model"][m]["calls"] += 1
+            cache["cost"]["by_model"][m]["tokens"] += c["total_tokens"]
+            cache["cost"]["by_model"][m]["cost"] = round(
+                cache["cost"]["by_model"][m]["cost"] + c["cost"], 6
+            )
+        _write_cache(book_name, cache)
+
+    try:
+        res = chat(user_msg, max_steps=max_steps)
+        agent_text = contents(res).content
+    except (KeyboardInterrupt, Exception) as e:
+        print(f"\nAgent interrupted: {e}", file=sys.stderr)
+        print(f"Saving partial cost data ({len(COST_TRACKER.calls)} calls)...",
+              file=sys.stderr)
+        _save_cost()
+        print("\n--- Partial Cost ---", file=sys.stderr)
+        print(COST_TRACKER.summary(), file=sys.stderr)
+        raise
 
     # Print cost summary to stderr
     print("\n--- Cost ---", file=sys.stderr)
     print(COST_TRACKER.summary(), file=sys.stderr)
 
-    # Save cost to cache
-    cache = _read_cache(book_name)
-    cache["cost"] = {
-        "total": round(COST_TRACKER.total_cost, 6),
-        "tokens": COST_TRACKER.total_tokens,
-        "calls": len(COST_TRACKER.calls),
-        "by_model": {},
-    }
-    for c in COST_TRACKER.calls:
-        m = c["model"]
-        if m not in cache["cost"]["by_model"]:
-            cache["cost"]["by_model"][m] = {"calls": 0, "tokens": 0, "cost": 0.0}
-        cache["cost"]["by_model"][m]["calls"] += 1
-        cache["cost"]["by_model"][m]["tokens"] += c["total_tokens"]
-        cache["cost"]["by_model"][m]["cost"] = round(
-            cache["cost"]["by_model"][m]["cost"] + c["cost"], 6
-        )
-    _write_cache(book_name, cache)
+    _save_cost()
 
     return agent_text
 

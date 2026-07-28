@@ -1,0 +1,89 @@
+#+last_modified: 2026-07-26 23:33:35
+
+Current app is just a prototype serving one user - my child - to whom I will read the book to and interact with them to help them learn chinese characters. To scale this up we would need the following features.
+
+* library
+
+** a private library
+
+Each user can upload their private collection of books they might own a physical copy of. They would scan or take picture of each page of that book with their phone or scanner. 
+
+** a public library
+
+Contains a collection of public domain books that any user can read
+
+** book import flow
+
+The new book import flow will be used by maintainer to import public domain books or private books of users. Concerned about copy right problems we should be careful about the data handling. Detailed consideration needs to be researched. 
+
+Additionally, importing books is the place that would generate cost. So cost tracking needs to be done and optimized. 
+
+** parent pin and student login
+
+students should be able to login with a basic pin generated for them. They can login by scanning a qr code - kinda like iready
+
+parents should be able to enter a pin to parent dashboard where they can manage book library, rewards, and check learning progression. 
+
+* mastery tracking
+
+** student response
+
+current application I am doing all the response evaluation. I will read the passage, then ask the student to point out the words they know. When there's gaps, encourage them to pick out the words they should have known (review priority words), or encourage them to find the new word so that they see the unicorn rewards.
+
+I'd like a speech recognition module for this where the flow would be: the student use keyboard to highlight a new phrase, then hit space, then they would say the words, recognize which word they said, then reveal all and only those they spoke correctly. 
+
+** learning flow
+
+currently this is also handled by me - but I'd like to operationalize. each word (distinct as its form and meaning) transition between the following states: new, introduced, practiced, mastered.
+
+Chinese words of the same form can have different meanings - introduced is applied to each meaning. when we are learning a new meaning for an existing form words, we should go through introduced stage again. 
+
+** skill transfer
+
+one would naturally think that there are skill transfer - ie learning a new meaning for a learnt form should be easier; or learning a new form with a know bushou should be easier.
+
+Given this app is for young children, we intentionally decide not to consider these transfers. 
+
+** new words
+
+new words are picked using the =recommend_words.py= feature. This currently is rule based - opportunistically picking words from a given book based on frequency of the top 1000 words + most frequent book in the book. 
+
+** introduction
+
+I currently do the introduction for new words. As we scale up the app, we currently lean on parents to do the introduction. Intentionally we decide not to do additional features. 
+
+** mastery tracking
+
+current app has a fluency.txt and I manually observe child's fluency and put words in there. This is very primitive.
+
+first version of the app we will use Bayesian Knowledge Tracing. Wilson et al. (2019) or BKT (Corbett & Anderson, 1995) to update students estimated mastery after every response. We can use 90% threashold for now. 
+
+depending on how reliable speech recognition is, we may consider alternative to derisk mastery tracking by asking parents to confirm certain responses. In real life, I immediately correct my child (gently of course) when they recognize a word wrong. Also I observe signs from her response features - eg. I watch her face to see if she sqinks her eyes - which means difficulty in recall; or if she take a long time and finally remembered or not. I think this area would need some research to improve.
+
+I think an acceptable first version would be have parent and speech recognition collaborate to grade optimized towards reducing # of times parent input needed and improving parent speech recognition agreement. 
+
+** spaced repetition
+
+We should start with a simple algorithm but we need to think through what is our optimization objectives and what data would we need.
+
+We know to start up the constraint is the child would want specific books, and available books might not review the most urgently needed to be reviewed book. 
+
+* rewards
+
+** earn little red flower 
+
+each effort the student put in earn them little red flowers: read a book, find 80%+ of practice or new words, mastered a word, etc. 
+
+** reward store
+
+family will configure what student could use their little red flowers for. we will have some placeholder rewards that works for my family - including play board games together, buy a lego minifig. If user choose screen time as reward, I feel important to warn them about harms on screen time for young children and disencourage them from doing it. 
+
+https://jamanetwork.com/journals/jamapediatrics/fullarticle/2808593
+https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2821176
+https://red.library.usd.edu/cgi/viewcontent.cgi?article=1002&context=se-fp
+https://jamanetwork.com/journals/jamapediatrics/fullarticle/2821940
+https://pubmed.ncbi.nlm.nih.gov/32202633/
+
+I feel necessary to have a work stream researching what type of reward is best for kids according to more recent pediatric research. 
+
+** 

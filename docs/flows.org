@@ -1,4 +1,4 @@
-#+last_modified: 2026-07-26 23:49:19
+#+last_modified: 2026-07-27 22:07:43
 
 * User flow
 :PROPERTIES:
@@ -125,7 +125,7 @@ Dictate the book content to the generate json. The book is stored in a single sc
 
 Then run =python scripts/segment_phrases.py 安稳与独角兽= to auto-segment each page's chars into phrases for the reading spotlight. Fix any segmentation mistakes in the Edit modal using =|= as a phrase separator.
 
-Then run =python scripts/recommend_words.py 哪一个很奇怪 --all=
+Then run =python scripts/recommend_words.py 嘿我是独角章 --all=
 
 ** Agent-driven pipeline
 

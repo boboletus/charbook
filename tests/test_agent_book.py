@@ -602,3 +602,108 @@ def test_find_story_start_uses_cache(tmp_path, monkeypatch):
     # page 1 (cached title, stop). So first_story = 2, 2 new vision calls.
     assert call_count == 2  # pages 3 and 2 needed vision calls
     assert data["first_story_page"] == 2
+
+
+# --- check_end_pages ---
+
+def test_check_end_pages_removes_non_story(tmp_path, monkeypatch):
+    """check_end_pages should classify and remove non-story pages at the end."""
+    monkeypatch.setattr(agent_book, "ASSETS_DIR", tmp_path)
+    book = tmp_path / "testend"
+    book.mkdir()
+    for n in range(1, 6):
+        (book / f"page{n}.jpg").write_bytes(b"fake")
+
+    agent_book.gen_book("testend")
+
+    classifications = {
+        3: {"classification": "story", "reason": "story"},
+        4: {"classification": "non-story", "reason": "end notes"},
+        5: {"classification": "non-story", "reason": "back cover"},
+    }
+    def mock_classify(book_name, page_num):
+        return classifications.get(page_num, {"classification": "story", "reason": "story"})
+    monkeypatch.setattr(agent_book, "_classify_with_vision", mock_classify)
+
+    result = agent_book.check_end_pages("testend")
+    assert "removed 2 non-story" in result
+    remaining = agent_book._list_page_nums("testend")
+    assert remaining == [1, 2, 3]
+    cache = agent_book._read_cache("testend")
+    assert cache["end_checked"] is True
+    assert cache["end_removed"] == [4, 5]
+
+
+def test_check_end_pages_cascading(tmp_path, monkeypatch):
+    """Removing end pages should expose and remove further non-story pages."""
+    monkeypatch.setattr(agent_book, "ASSETS_DIR", tmp_path)
+    book = tmp_path / "testcasc"
+    book.mkdir()
+    for n in range(1, 6):
+        (book / f"page{n}.jpg").write_bytes(b"fake")
+
+    agent_book.gen_book("testcasc")
+
+    # Page 5 non-story, then page 4 becomes last and is also non-story
+    classifications = {
+        4: {"classification": "non-story", "reason": "blank"},
+        5: {"classification": "non-story", "reason": "back cover"},
+    }
+    def mock_classify(book_name, page_num):
+        return classifications.get(page_num, {"classification": "story", "reason": "story"})
+    monkeypatch.setattr(agent_book, "_classify_with_vision", mock_classify)
+
+    result = agent_book.check_end_pages("testcasc")
+    assert "removed 2 non-story" in result
+    remaining = agent_book._list_page_nums("testcasc")
+    assert remaining == [1, 2, 3]
+
+
+def test_check_end_pages_all_story(tmp_path, monkeypatch):
+    """No non-story pages at end should remove nothing."""
+    monkeypatch.setattr(agent_book, "ASSETS_DIR", tmp_path)
+    book = tmp_path / "testallstory"
+    book.mkdir()
+    for n in range(1, 5):
+        (book / f"page{n}.jpg").write_bytes(b"fake")
+
+    agent_book.gen_book("testallstory")
+
+    monkeypatch.setattr(agent_book, "_classify_with_vision",
+                        lambda bk, n: {"classification": "story", "reason": "story"})
+
+    result = agent_book.check_end_pages("testallstory")
+    assert "none removed" in result
+    remaining = agent_book._list_page_nums("testallstory")
+    assert remaining == [1, 2, 3, 4]
+    cache = agent_book._read_cache("testallstory")
+    assert cache["end_checked"] is True
+    assert cache["end_removed"] == []
+
+
+def test_check_end_pages_cached_skips(tmp_path, monkeypatch):
+    """Re-running with end_checked in cache should be a no-op."""
+    monkeypatch.setattr(agent_book, "ASSETS_DIR", tmp_path)
+    book = tmp_path / "testcached"
+    book.mkdir()
+    for n in range(1, 4):
+        (book / f"page{n}.jpg").write_bytes(b"fake")
+
+    agent_book.gen_book("testcached")
+    agent_book._write_cache("testcached", {
+        "end_checked": True,
+        "end_removed": [5],
+    })
+
+    call_count = 0
+    def mock_classify(book_name, page_num):
+        nonlocal call_count
+        call_count += 1
+        return {"classification": "non-story", "reason": "should not be called"}
+    monkeypatch.setattr(agent_book, "_classify_with_vision", mock_classify)
+
+    result = agent_book.check_end_pages("testcached")
+    assert "cached" in result.lower()
+    assert call_count == 0
+    remaining = agent_book._list_page_nums("testcached")
+    assert remaining == [1, 2, 3]  # nothing removed

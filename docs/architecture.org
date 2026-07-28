@@ -1,0 +1,239 @@
+#+title:      Charbook — Architecture for the Scaled App
+#+date:       [2026-07-27 Mon]
+#+last_modified: [2026-07-27 Mon]
+#+filetags:   :projects:charbook:architecture:
+
+This document plans the port of the current static prototype ([[denote:20260726T234800][Charbook Design]]) into a scaled, multi-user application with persistence, accounts, learning tracking, a parent dashboard, and a reward store. It records decisions made, recommends a stack, specifies the data model, maps the prototype's features to new components, and phases the work.
+
+The current repo (~book-chinese~) remains the live prototype during the transition. The scaled app lives in a *new repo* (decided 2026-07-27). This document seeds that repo's founding docs and should be copied in when the repo is created.
+
+* Decisions made (2026-07-27)
+
+- *Location* :: new repo, separate from the prototype. Python tooling (~scripts/~) moves into the new repo's backend.
+- *Styling* :: Tailwind (v4).
+- *Performance* :: a top priority — mobile, low-bandwidth, low-end devices, input-mashing children.
+- *This session* :: architecture document only; no code written yet.
+
+Deferred to the recommendations below: app framework (Tailwind is styling, not a framework), backend/database, auth, hosting.
+
+* Product principles (carried from the design doc)
+
+- *Parent-mediated learning* :: parents do new-word introduction and verify responses; the app supports rather than replaces this.
+- *Intentional simplicity* :: no skill-transfer modeling; simple spaced repetition to start.
+- *Privacy-first* :: private library imports are not visible to the app; LLM-assisted import uses the user's token scope.
+
+* Recommended stack
+
+** Frontend: SvelteKit + Tailwind v4
+
+SvelteKit is the recommended app framework to pair with Tailwind.
+
+*Rationale.*
+- Svelte compiles components to vanilla JS at build time — there is no virtual-DOM runtime shipped to the client. Of the major frameworks, Svelte produces the smallest bundles, which is the single biggest lever for the stated goal of a *very performant, low-bandwidth, mobile* site.
+- SvelteKit provides file-based routing, nested layouts, SSR for fast first paint (and progressive enhancement), and a lightweight store-based state model. The app is fundamentally an interactive single-session experience once a book is chosen, so cross-route state (current book, session, spotlight index, student) is core — SvelteKit's ~load~ functions and stores handle this cleanly.
+- The transition from the current vanilla-JS ~app.js~ is gentle: Svelte's reactivity (~$~ stores, ~let~ bindings) is close to the prototype's module-level ~let~ state and free functions. ~textContent~ discipline and the CSS animation system port directly.
+- Tailwind v4 (via ~@tailwindcss/vite~) replaces hand-written ~style.css~. The existing OKLCH design tokens, ~var(--ease)~ timing, ~scale(0.96)~ press, and concentric radius conventions become a Tailwind theme + a small set of component classes. No ~transition: all~; explicit transition properties remain the rule.
+
+*Alternatives considered.*
+- *Next.js (React)* — largest ecosystem, but ships the React reconciler runtime; bundles are heavier and runtime overhead is measurable on low-end devices. More boilerplate for the interactive reading view.
+- *Astro* — ships zero JS by default (best initial load of all), and the library/auth shell could be server-rendered. But the reading and dashboard views are heavily interactive "islands," and cross-island/cross-route state (book, session, student, spotlight) is awkward. Better suited to content sites than a stateful app. Viable if minimizing JS is prioritized over state ergonomics.
+- *Nuxt (Vue)* — middle ground; Vue's reactivity runtime is heavier than Svelte's compiled output.
+- *Stay vanilla JS* — cheapest port, but auth, the dashboard, learning tracking, and forms get hand-rolled and unmaintainable. Rejected for the scaled app.
+
+** Backend: FastAPI + SQLite (WAL) + DuckDB (analytics)
+
+A single Python process serves the API. Two embedded databases sit alongside it.
+
+- *FastAPI* — async, Pydantic-typed, auto OpenAPI. Crucially, it is *Python*, matching the existing tooling (~agent_book.py~, ~recommend_words.py~, ~segment_phrases.py~, ~gen_book.py~). Those scripts become backend services with minimal rewrite; the agent-driven import pipeline runs server-side.
+- *SQLite (WAL mode)* — the primary OLTP store: accounts, students, books, learning events, reward ledger, sessions. Embedded, zero ops, zero licensing cost (fits nonprofit). WAL allows many concurrent readers and one writer at a time, which is plenty for a small early user base. Reads are memory-speed for warm pages. Wrap access in SQLAlchemy so a migration to Postgres is a config change when write contention appears.
+- *DuckDB (embedded, analytics)* — the dashboard and recommendation layer. DuckDB is an OLAP database: columnar, vectorized, and extremely fast for the aggregations the parent dashboard needs (mastery-over-time, words practiced per week, BKT trajectory, curriculum coverage). DuckDB reads the SQLite file *directly* via its ~sqlite_scanner~ extension — no ETL, no duplicated data. It also excels at the batch BKT recomputations and the ~recommend_words~ ranking (set operations over the frequency table ∩ student mastery).
+
+This ~SQLite-writes + DuckDB-reads~ pattern is an established lightweight HTAP approach for small scale: embedded, zero ops, fast on both axes, and trivially migrate-able to Postgres + a warehouse later.
+
+*Auth* — session-cookie based (not JWT), via Starlette sessions or ~fastapi-users~. No heavy OAuth initially.
+- *Parent account* — email + password (or magic link). Holds the parent PIN and manages the family.
+- *Student profile* — created by the parent; has a short PIN and a QR code. Student logs in by PIN entry or by scanning their QR (the QR encodes a short-lived session token bound to the student). Mirrors the iReady-style login in the design doc.
+
+*Alternatives considered.*
+- *Supabase (hosted Postgres + RLS)* — excellent and would enforce private-library isolation at the DB via Row-Level Security. Rejected as the *first* choice because it is a managed dependency with usage limits and cost scaling, and the team is Python-centric (the existing pipeline is Python). Postgres via Supabase remains the natural *migration target* if SQLite write contention or managed-RLS needs arise.
+- *Firebase (Firestore)* — fast to start, but NoSQL is awkward for BKT and curriculum join queries, and vendor lock-in is high. Rejected.
+- *DuckDB as the sole store* — rejected: DuckDB is OLAP, not designed for OLTP (concurrent inserts, auth, session state). It is the analytics companion, not the primary store.
+- *Cloudflare D1 / Turso (SQLite at the edge)* — attractive for latency, but RLS/auth would be hand-built. Keep as a future edge option once the FastAPI + local-SQLite shape is proven.
+
+** Hosting
+
+- *Frontend* — SvelteKit deployed to a CDN/edge (Cloudflare Pages or Vercel). Static assets cached globally; SSR for first paint. Cheap/free tiers fit nonprofit.
+- *Backend* — FastAPI on a small region-close VPS (Fly.io recommended: free tier, persistent volumes for the SQLite file, easy scale-up). DuckDB and SQLite live on the same volume.
+- *Images* — book page JPGs served via the FastAPI backend (or offloaded to object storage + CDN when the library grows). Generate responsive ~srcset~ (WebP/AVIF) at import time so mobile/low-bandwidth gets small variants; lazy-load offscreen pages.
+
+* Data model
+
+Entities below. SQLite tables; DuckDB reads them via ~sqlite_scanner~. ~id~ columns are integers unless noted.
+
+** Identity & access
+
+| Entity | Key fields | Notes |
+|--------|-----------|-------|
+| ~account~ | id, email, password_hash, parent_pin, created_at | One per family. |
+| ~student~ | id, account_id (FK), name, avatar, pin, qr_token, created_at | Child profiles. PIN + QR login. |
+
+** Content
+
+| Entity | Key fields | Notes |
+|--------|-----------|-------|
+| ~book~ | id, owner_account_id (NULL=public), title, script (trad/simp), priority, new_words, custom_words, base_path, cover, visibility (public/private), source, created_at | Private books carry ~owner_account_id~ and are isolated (see Privacy). |
+| ~book_page~ | id, book_id (FK), page_number, chars, phrases (JSON array), image_path | Mirrors current ~book.json~ pages. |
+| ~import_job~ | id, account_id, source (pdf/scan), status, cost_estimate, cost_actual, created_at | Async import + cost tracking (design doc: Nonprofit & cost tracking). |
+
+** Learning
+
+| Entity | Key fields | Notes |
+|--------|-----------|-------|
+| ~word~ | id, form (char), meaning_id, pinyin, zhuyin | Distinct per *meaning* (polysemy). 長 has two rows (cháng / zhǎng). |
+| ~word_mastery~ | student_id, word_id, p_known (0–1), state (new/introduced/practiced/mastered), first_seen_at, last_updated | The core BKT state. 90% threshold → mastered. |
+| ~learning_event~ | id, student_id, word_id, book_id, page_number, session_id, timestamp, outcome (correct/incorrect/partial), source (parent_confirm/speech/self), confidence, response_features (JSON) | Append-only log feeding BKT. ~response_features~ captures latency_ms, squinting, etc. (design doc: real-life signal). |
+| ~session~ | id, student_id, book_id, started_at, ended_at, pages_read, events_count, flowers_earned | A reading session. |
+| ~fluency~ | student_id, chars | Migration shim for ~fluency.txt~; superseded by ~word_mastery~. |
+
+** Rewards
+
+| Entity | Key fields | Notes |
+|--------|-----------|-------|
+| ~flower_ledger~ | id, student_id, delta (±), reason, reference_id, timestamp | Append-only. Earning: read_book, found_80pct, mastered_word. Spending: redeemed. |
+| ~flower_balance~ | student_id, balance | Cached sum of ledger (recomputed on write). |
+| ~reward_item~ | id, account_id (NULL=global in-app), type (family/in_app), name, description, cost_flowers, category, icon, screen_time_warning, active | Family-configured (board game, lego) + in-app (popouts, sounds, themes). |
+| ~reward_redemption~ | id, student_id, reward_item_id, cost, timestamp, status | pending/approved/fulfilled/cancelled. |
+
+** Curriculum
+
+| Entity | Key fields | Notes |
+|--------|-----------|-------|
+| ~curriculum_standard~ | char, stage (1/2/3), category | Taiwan 108 課綱 alignment (design doc: DECIDED align taiwan 108). Stage 1 = 1000 chars. |
+| ~curriculum_progress~ | student_id, stage, chars_mastered_count, updated_at | Derived for the dashboard. |
+
+** BKT mastery tracking (DECIDED: BKT, 90% threshold)
+
+Standard Bayesian Knowledge Tracing (Corbett & Anderson, 1995). Per ~word~, parameters: prior ~p0~, transit ~T~, slip ~S~, guess ~G~ (defaults ~p0=0.1, T=0.1, S=0.1, G=0.25~; tunable per-word later).
+
+On each ~learning_event~:
+#+begin_src text
+# Correct observation
+p_known = p_known * (1 - S) / (p_known * (1 - S) + (1 - p_known) * G)
+# Incorrect observation
+p_known = p_known * S / (p_known * S + (1 - p_known) * (1 - G))
+# Learning transition (after either)
+p_known = p_known + (1 - p_known) * T
+#+end_src
+
+State mapping: ~p_known < 0.5~ → new/introduced; ~0.5–0.9~ → practiced; ~≥ 0.9~ → mastered. Computed in the FastAPI handler on each event; batch recomputable in DuckDB for the dashboard. This operationalizes the design doc's ~fluency.txt~ → ~word_mastery~ upgrade.
+
+** The "key to confirm" flow (Priority item)
+
+During reading, when the child correctly reveals a word, the parent presses a confirm key (proposed: ~Enter~, distinct from the existing ~Space~ reveal). This:
+1. Logs a ~learning_event~ (~outcome=correct, source=parent_confirm~) for each word in the just-revealed phrase.
+2. Runs the BKT update on the affected ~word_mastery~ rows.
+3. Evaluates flower-earning rules (e.g. found 80%+ of the page's practice/new words → ~flower_ledger~ credit).
+Incorrect reveals (child pointed at the wrong word, parent does not confirm, or parent marks wrong) log ~outcome=incorrect~ — feeding BKT's slip path. This is the first-version "parent + (eventual) speech recognition collaborate to grade" model, starting parent-only.
+
+* Feature port map (prototype → new)
+
+| Prototype (~app.js~) | New (SvelteKit) | Notes |
+|----------------------|-----------------|-------|
+| ~LIBRARY~ array (hardcoded line 1) | ~+page.svelte~ ~\/library~; books from ~GET /api/books~ | Public + private (per account). |
+| Library screen | ~LibraryScreen.svelte~ | Cover cards, variant toggle. |
+| Review screen | ~ReviewScreen.svelte~ | 複習 / 新字 groups; same tap-to-review. |
+| Reading screen (cards, spotlight, reminder) | ~ReadingView.svelte~ + ~CardGrid.svelte~ + ~Card.svelte~ + ~Spotlight.svelte~ + ~ReminderStrip.svelte~ | Port animation + layout math (~computeCols~, ~distributeChars~, ~computePositions~) into a shared ~lib/layout.ts~. Right-to-left columns preserved. |
+| Variant toggle (繁/簡, opencc-js) | ~VariantToggle.svelte~ + ~lib/convert.ts~ | opencc-js vendored or as an npm package; same runtime conversion. |
+| Edit modal | ~EditModal.svelte~ | Now *persists* via ~PUT /api/books/:id/pages/:n~ (was in-memory only). |
+| Unicorn reward | ~UnicornReward.svelte~ | Same SVG + 5 animations + OKLCH color + reduced-motion fallback. Assets served from backend. |
+| ~completedPages~ (in-memory Set) | ~page_completion~ (session-scoped) | Survives reload now. |
+| ~book.json~ ~fetch~ | ~GET /api/books/:id~ | Server assembles from ~book~ + ~book_page~. |
+| ~recommend_words.py~ | ~GET /api/recommend/:book_id~ | Wraps the logic; ranks against ~word_mastery~ (not ~fluency.txt~). |
+| ~segment_phrases.py~ | server-side, run at import | No client change. |
+| ~agent_book.py~ | ~POST /api/import~ (async job → ~import_job~) | Runs server-side; cost tracked; private imports use user token scope. |
+| ~gen_book.py~, ~extract_pdf.py~, ~gen_prize.py~ | backend import utilities | Internal; not client-facing. |
+
+* Phasing
+
+Dependencies are explicit so work can be parallelized.
+
+** Phase 0 — Scaffolding & design system
+- New repo; SvelteKit + Tailwind v4 + FastAPI skeletons.
+- Shared schema (Pydantic ↔ TypeScript via ~openapi-typescript~).
+- Port the design system: OKLCH tokens → Tailwind theme; ~Card~, ~Btn~, ~SegmentedToggle~, ~Modal~ primitives; ~var(--ease)~, ~scale(0.96)~, concentric radius, reduced-motion.
+- Deploy pipeline (CDN frontend + Fly.io backend).
+- *Unblocks:* Phases 1 and 2.
+
+** Phase 1 — Port all reading features (no backend yet)
+- Library, review, reading, edit, spotlight, unicorn, variant toggle.
+- Runs against existing ~book.json~ files served statically (or a thin read-only API).
+- Match current UX exactly (per ~docs/flows.org~ user flow). This is the "port all current features" deliverable.
+- *Parallelizable with* Phase 2 by a separate contributor (frontend vs backend).
+
+** Phase 2 — Persistence + auth (enables priority features)
+- FastAPI + SQLite + session auth (parent account, student PIN/QR).
+- Books via API; public + private isolation enforced at the API layer (~owner_account_id~ checks).
+- ~learning_event~ logging (the confirm-key flow) → BKT ~word_mastery~ updates.
+- Migrate ~fluency.txt~ → ~word_mastery~.
+- Edit modal now persists.
+- *Unblocks:* Phases 3 and 4 (in parallel).
+
+** Phase 3 — Parent dashboard (Priority item)
+- DuckDB analytics layer over SQLite.
+- Dashboard views: mastery over time, curriculum coverage (Taiwan 108 stage 1), words due for review, session history, flower balance.
+- Automated word recommendation (~GET /api/recommend~) using ~word_mastery~.
+- *Parallelizable with* Phase 4 once Phase 2 lands.
+
+** Phase 4 — Reward store (Priority item)
+- ~flower_ledger~ earning rules (read a book, find 80%+, master a word).
+- Family reward store (parent configures ~reward_item~: board game, lego minifig, …).
+- In-app items (popouts, sounds, themes) — 2–3 to start.
+- Screen-time warning UX (design doc: discourage screen-time rewards; cite the JAMA/pediatric refs).
+- Redemption flow (~reward_redemption~).
+- *Parallelizable with* Phase 3 once Phase 2 lands.
+
+** Phase 5+ — Later (from the design doc, not in this session's priority)
+- Rereading adaptation (adjust review/new words by current mastery).
+- Spaced repetition (simple algorithm first; optimization objectives TBD).
+- Response evaluation: speech recognition + parent verification; tones; response-feature research.
+- Private-library import automation (Calibre/Kindle/Douban hooks) + copyright compliance research.
+- Public library curation (author/publisher outreach; original stories + generated artwork).
+- Repeating-error AI intervention.
+- Nonprofit structure, cost tracking, subscription costing, data export/deletion (self-serve).
+
+* Technical requirements (from the design doc)
+
+** Input-mashing robustness
+Children mash buttons. Mitigations:
+- Client: debounce/queue event writes; optimistic UI updates that never block on the network; disable buttons during in-flight state with a short cooldown; ~pointerdown~ + ~preventDefault~ (kept from prototype).
+- Server: WAL SQLite absorbs concurrent reads; serialize writes via a single writer queue; rate-limit per student; idempotent event writes (client-generated id) so retries don't double-count.
+- The confirm-key flow must tolerate rapid double-presses (collapse to one ~learning_event~).
+
+** Private library isolation
+- Private ~book~ rows carry ~owner_account_id~; every query filters by account (enforced in the API layer, optionally later by Postgres RLS after migration).
+- Private book assets (page images) stored under account-scoped paths; never listed in public endpoints.
+- LLM-assisted import (~agent_book.py~ server-side) for private books runs with the *user's* API token scope — the app operator cannot see the imported content. Cost is tracked (~import_job~) but content is not.
+
+** Mobile & low-bandwidth
+- SvelteKit SSR + minimal JS → fast first paint.
+- Responsive image variants (WebP/AVIF, ~srcset~) generated at import; lazy-load offscreen pages; CDN-cached.
+- The card layout is computed from image aspect ratio (kept from prototype) so no layout shift.
+- Offline-tolerant reading of an already-loaded book (service worker caching the current book's assets) — a Phase 5+ stretch.
+
+* Migration plan (prototype → new repo)
+
+1. Create the new repo; seed it with this document as ~docs/architecture.org~ and a fresh ~AGENTS.md~.
+2. Copy the Python ~scripts/~ + ~tests/~ into the new repo's backend; adapt ~recommend_words~ to read ~word_mastery~ instead of ~fluency.txt~ (Phase 2).
+3. The 5 existing ~book.json~ + page images become seed data for the *public* library (imported via the pipeline or copied as static seed).
+4. Port features per Phase 1; reach feature parity with the prototype behind a feature flag.
+5. Cut over: point the deployment at the new app once Phase 1 + 2 pass integration tests. Keep the prototype repo live as a fallback until the new app is stable.
+6. Supersede ~docs/flows.org~ and ~docs/design.org~ in the new repo with updated user-flow + design docs reflecting the new features.
+
+* Open decisions (deferred)
+
+- *App framework confirmation* :: SvelteKit recommended; confirm before Phase 0 coding. Astro is the fallback if minimizing shipped JS outweighs state ergonomics.
+- *Primary store* :: SQLite recommended to start; confirm. Postgres (Supabase or self-hosted) is the migration target — decide the trigger threshold (e.g. >N concurrent writers).
+- *Confirm-key binding* :: ~Enter~ proposed for parent confirm (distinct from ~Space~ reveal). Confirm against the keyboard map in ~docs/flows.org~.
+- *BKT parameter tuning* :: defaults assumed; needs real data to calibrate per-word ~T/S/G~.
+- *Spaced repetition objectives* :: design doc OPEN — what to optimize and what data to collect. Defer to Phase 5.
+- *Copyright compliance* :: design doc RESEARCHING — private-library automation and public-library import both need legal research before those features ship.
